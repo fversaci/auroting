@@ -34,10 +34,12 @@ network Torus3d
         {
         }
     submodules:
-        node[kX*kY*kZ]: Node;
+        node[kX*kY*kZ]: Node {
+            addr = index;
+        };
     connections:
         // (x,y,z) maps to x+y*kX+z*kX*kY
-        for x=0..kY-1, for y=0..kX-1, for z=0..kZ-1{
+        for x=0..kY-1, for y=0..kX-1, for z=0..kZ-1 {
             node[x+y*kX+z*kX*kY].gate[0] <--> Chan <--> node[(x+1)%kX+y*kX+z*kX*kY].gate[1];
             node[x+y*kX+z*kX*kY].gate[2] <--> Chan <--> node[x+((y+1)%kY)*kX+z*kX*kY].gate[3];
             node[x+y*kX+z*kX*kY].gate[4] <--> Chan <--> node[x+y*kX+((z+1)%kZ)*kX*kY].gate[5];

@@ -15,33 +15,12 @@
 
 package _3buf;
 
-import ned.IdealChannel;
-
-
 //
-// TODO auto-generated type
+// TODO auto-generated module
 //
-module Node
+simple Sink
 {
-    parameters:
-        @display("i=old/pctower1");
-        int addr = default(0);
+    @display("i=block/sink");
     gates:
-        inout gate[6];
-    submodules:
-        generator: Generator {
-            @display("p=60,56");
-        }
-        router: Router {
-            @display("p=119,154");
-        }
-        sink: Sink {
-            @display("p=179,56");
-        }
-    connections:
-        router.consume --> IdealChannel --> sink.consume;
-        generator.inject --> IdealChannel --> router.inject;
-        for i=0..5 {
-            router.gate[i] <--> IdealChannel <--> gate[i];
-        }
+        input consume;
 }

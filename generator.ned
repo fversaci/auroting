@@ -18,10 +18,9 @@ package _3buf;
 //
 // TODO auto-generated type
 //
-simple Processor
+simple Generator
 {
-    @display("i=device/cpu");
+    @display("i=block/source");
     gates:
-        input consume;
         output inject;
 }
