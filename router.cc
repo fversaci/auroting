@@ -20,7 +20,6 @@ Define_Module(Router)
 void Router::handleMessage(cMessage *msg) {
 	Pack *p = check_and_cast<Pack *>(msg);
 
-
 	int addr = getParentModule()->par("addr");
 	int dst = p->getDst();
 	if (dst == addr) {
