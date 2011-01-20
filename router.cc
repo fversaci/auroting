@@ -13,24 +13,44 @@ private:
 	// cQueue coda;
 	simtime_t timeout;  // timeout
 	cMessage *timeoutEvent;  // holds pointer to the timeout self-message
-	cMessage *bufmsg;
+	Pack *bufpac;
 	cMessage *ack;
 	bool full;
-	void sendACK(cMessage *mess);
+	inline void sendACK(cMessage *mess);
+	inline void routePac(Pack *pac);
 protected:
 	virtual void handleMessage(cMessage *msg);
 	virtual void initialize();
+public:
+	Router();
+	virtual ~Router();
 };
 
 // register module class with `\opp`
 Define_Module(Router)
 ;
 
+Router::Router(){
+	bufpac = NULL;
+	ack = NULL;
+}
+
+Router::~Router(){
+	cancelAndDelete(timeoutEvent);
+	if (bufpac != NULL)
+		delete bufpac;
+	delete ack;
+}
+
+void Router::routePac(Pack *pac){
+	send(pac, "gate$o", intrand(6));
+}
+
 void Router::initialize(){
-	timeout = 0.25;
-	timeoutEvent = new cMessage("timeoutEvent");
+	timeout = .001 * (simtime_t) par("timeout"); // in milliseconds
+	timeoutEvent = new cMessage("TIMEOUT");
 	ack = new cMessage("ACK");
-	ack->setKind(33);
+	ack->setKind(par("ackind"));
 	full = false;
 }
 
@@ -50,14 +70,16 @@ void Router::sendACK(cMessage *mess){
 void Router::handleMessage(cMessage *msg) {
 	if (msg == timeoutEvent) {
 		// timeout expired, re-send packet and restart timer
-		send(bufmsg->dup(), "gate$o", intrand(6));
+		routePac(bufpac->dup());
 		scheduleAt(simTime() + timeout, timeoutEvent);
 	} else if (msg->getKind() == 33){
 		// ack received
 		ev << "ACK received at " << ((int) getParentModule()->par("addr")) << endl;
 		cancelEvent(timeoutEvent);
-		delete bufmsg;
+		delete bufpac;
+		bufpac = NULL;
 		full = false;
+		delete msg;
 	} else {
 		// arrived packet
 		Pack *p = check_and_cast<Pack *>(msg);
@@ -70,7 +92,7 @@ void Router::handleMessage(cMessage *msg) {
 			send(p, "consume");
 			ev << "Reached node " << addr << endl;
 		}
-		else if (full || uniform(0,1) < 0.0) // discard packet?
+		else if (full) // discard packet
 		{
 			// message lost
 			delete msg;
@@ -78,12 +100,10 @@ void Router::handleMessage(cMessage *msg) {
 		} else {
 			// forward message
 			sendACK(msg);
-			bufmsg=msg->dup();
+			bufpac=p->dup();
 			full = true;
-			send(msg->dup(), "gate$o", intrand(6));
+			routePac(p);
 			scheduleAt(simTime() + timeout, timeoutEvent);
 		}
 	}
 }
-
-

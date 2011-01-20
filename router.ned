@@ -20,6 +20,9 @@ package _3buf;
 //
 simple Router
 {
+    parameters:
+        double timeout @unit(ms);
+        int ackind;
     @display("i=block/routing");
     gates:
         input inject;
