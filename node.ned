@@ -24,7 +24,7 @@ import ned.IdealChannel;
 module Node
 {
     parameters:
-        @display("i=old/pctower1");
+        @display("i=old/pctower1;bgb=232,257");
         int addr = default(0);
     gates:
         inout gate[6];

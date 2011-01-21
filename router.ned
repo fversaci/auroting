@@ -23,6 +23,7 @@ simple Router
     parameters:
         double timeout @unit(ms);
         int ackind;
+        int queueSize;
     @display("i=block/routing");
     gates:
         input inject;

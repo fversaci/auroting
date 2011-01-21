@@ -10,14 +10,16 @@
 
 class Router: public cSimpleModule {
 private:
-	// cQueue coda;
+	cQueue coda;
 	simtime_t timeout;  // timeout
 	cMessage *timeoutEvent;  // holds pointer to the timeout self-message
-	Pack *bufpac;
 	cMessage *ack;
-	bool full;
+	int queueSize;
+	int ackind;
+	inline bool full();
 	inline void sendACK(cMessage *mess);
 	inline void routePac(Pack *pac);
+	inline void sendPack();
 protected:
 	virtual void handleMessage(cMessage *msg);
 	virtual void initialize();
@@ -27,18 +29,13 @@ public:
 };
 
 // register module class with `\opp`
-Define_Module(Router)
-;
+Define_Module(Router);
 
 Router::Router(){
-	bufpac = NULL;
-	ack = NULL;
 }
 
 Router::~Router(){
 	cancelAndDelete(timeoutEvent);
-	if (bufpac != NULL)
-		delete bufpac;
 	delete ack;
 }
 
@@ -49,9 +46,17 @@ void Router::routePac(Pack *pac){
 void Router::initialize(){
 	timeout = .001 * (simtime_t) par("timeout"); // in milliseconds
 	timeoutEvent = new cMessage("TIMEOUT");
+	ackind=par("ackind");
 	ack = new cMessage("ACK");
-	ack->setKind(par("ackind"));
-	full = false;
+	ack->setKind(ackind);
+	queueSize = par("queueSize");
+}
+
+bool Router::full(){
+	if (coda.length() <= queueSize)
+		return false;
+	else
+		return true;
 }
 
 void Router::sendACK(cMessage *mess){
@@ -67,21 +72,24 @@ void Router::sendACK(cMessage *mess){
 	}
 }
 
+void Router::sendPack(){
+	routePac((Pack *) coda.front()->dup());
+	scheduleAt(simTime() + timeout, timeoutEvent);
+}
+
 void Router::handleMessage(cMessage *msg) {
-	if (msg == timeoutEvent) {
-		// timeout expired, re-send packet and restart timer
-		routePac(bufpac->dup());
-		scheduleAt(simTime() + timeout, timeoutEvent);
-	} else if (msg->getKind() == 33){
+	if (msg == timeoutEvent) // timeout expired, re-send packet and restart timer
+		sendPack();
+	else if (msg->getKind() == ackind){
 		// ack received
 		ev << "ACK received at " << ((int) getParentModule()->par("addr")) << endl;
 		cancelEvent(timeoutEvent);
-		delete bufpac;
-		bufpac = NULL;
-		full = false;
-		delete msg;
+		delete coda.pop(); // delete committed packet
+		delete msg; // delete ACK
+		if (!coda.empty())
+			sendPack();
 	} else {
-		// arrived packet
+		// arrived a new packet
 		Pack *p = check_and_cast<Pack *>(msg);
 		int addr = getParentModule()->par("addr");
 		int dst = p->getDst();
@@ -92,7 +100,7 @@ void Router::handleMessage(cMessage *msg) {
 			send(p, "consume");
 			ev << "Reached node " << addr << endl;
 		}
-		else if (full) // discard packet
+		else if (full()) // discard packet
 		{
 			// message lost
 			delete msg;
@@ -100,10 +108,9 @@ void Router::handleMessage(cMessage *msg) {
 		} else {
 			// forward message
 			sendACK(msg);
-			bufpac=p->dup();
-			full = true;
-			routePac(p);
-			scheduleAt(simTime() + timeout, timeoutEvent);
+			coda.insert(p);
+			if (!timeoutEvent->isScheduled())
+				sendPack();
 		}
 	}
 }
