@@ -34,5 +34,6 @@ void Generator::initialize() {
 	Pack *msg = new Pack(roba.c_str());
 	msg->setDst(dest);
 	msg->setSrc(addr);
+	msg->setQueue(-1);
 	send(msg, "inject");
 }

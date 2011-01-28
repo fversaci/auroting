@@ -10,16 +10,20 @@
 
 class Router: public cSimpleModule {
 private:
-	cQueue coda;
+	static const int qs=3; ///< queue numbers
+	cQueue coda[qs]; ///< vector queue  0=A, 1=B, 2=C
+	Timeout* tv[qs]; ///< vector of timeouts for the queues
 	simtime_t timeout;  // timeout
-	cMessage *timeoutEvent;  // holds pointer to the timeout self-message
-	cMessage *ack;
 	int queueSize;
-	int ackind;
-	inline bool full();
-	inline void sendACK(cMessage *mess);
-	inline void routePac(Pack *pac);
+	int RRq; ///< RoundRobin queue selector \f$ \in \f$ {0=A, 1=B, 2=C}
+	inline void RcvPack(Pack* p); ///< put the packet in the right queue
+	/// enqueue p in coda[q] (drop packet if full(q) or send ACK in insert works)
+	void enqueue(Pack* p, int q);
+	inline bool full(int q);
+	inline void sendACK(Pack *mess);
+	inline void routePack(int q);
 	inline void sendPack();
+	inline int incRRq();
 protected:
 	virtual void handleMessage(cMessage *msg);
 	virtual void initialize();
@@ -35,82 +39,134 @@ Router::Router(){
 }
 
 Router::~Router(){
-	cancelAndDelete(timeoutEvent);
-	delete ack;
+	for (int c=0; c<qs; ++c){
+		delete(tv[c]);
+	}
 }
 
-void Router::routePac(Pack *pac){
+int Router::incRRq(){
+	RRq = (RRq + 1) % qs;
+	return RRq;
+}
+
+void Router::routePack(int q){
+	Pack* pac=(Pack *) coda[q].front()->dup();
+	// at destination, consume it
+	int addr = getParentModule()->par("addr");
+	int dst = pac->getDst();
+	if (dst == addr) {
+		// arrived at destination: consume
+		send(pac, "consume");
+		ev << "Reached node " << addr << endl;
+		delete coda[q].pop();
+		return;
+	}
+	// otherwise forward
 	send(pac, "gate$o", intrand(6));
+	scheduleAt(simTime() + timeout, tv[pac->getQueue()]);
 }
 
 void Router::initialize(){
 	timeout = .001 * (simtime_t) par("timeout"); // in milliseconds
-	timeoutEvent = new cMessage("TIMEOUT");
-	ackind=par("ackind");
-	ack = new cMessage("ACK");
-	ack->setKind(ackind);
 	queueSize = par("queueSize");
-}
-
-bool Router::full(){
-	if (coda.length() <= queueSize)
-		return false;
-	else
-		return true;
-}
-
-void Router::sendACK(cMessage *mess){
-	// send ACK
-	cGate *orig=mess->getArrivalGate();
-	if (orig != gate("inject")){
-		int ind=orig->getIndex();
-		if (ind%2==0)
-			++ind;
-		else
-			--ind;
-		send(ack->dup(), "gate$o", ind);
+	RRq = 0;
+	for (int c=0; c<qs; ++c){
+		tv[c]=new Timeout();
 	}
+}
+
+bool Router::full(int q){
+	// A,B,C queues have finite capacity
+	if (coda[q].length() < queueSize)
+		return false;
+	return true;
+}
+
+void Router::sendACK(Pack *mess){
+	cGate *orig=mess->getArrivalGate();
+	// if just injected do not send ACK
+	if (orig->getId()==gate("inject")->getId()){
+		return;
+	}
+	// otherwise send ACK back
+	int ind=orig->getIndex();
+	if (ind%2==0)
+		++ind;
+	else
+		--ind;
+	Ack *ackpack=new Ack();
+	ackpack->setQueue(mess->getQueue());
+	send(ackpack, "gate$o", ind);
+}
+
+void Router::enqueue(Pack* p, int q){
+	// if queue full drop the packet
+	if (full(q))
+	{
+		delete p;
+		ev << "Message lost" << endl;
+		return;
+	}
+
+	// otherwise insert it or consume it
+	sendACK(p);
+	p->setQueue(q);
+	coda[q].insert(p);
+}
+
+void Router::RcvPack(Pack* p){
+	int q=p->getQueue();
+
+	// if it has just been injected insert it in coda[0]
+	if (q<0){
+		enqueue(p,0);
+		return;
+	}
+	// if q=2, keep the same queue
+	if (q==2){
+		enqueue(p, q);
+		return;
+	}
+	// else increase the queue
+	enqueue(p, q+1);
 }
 
 void Router::sendPack(){
-	routePac((Pack *) coda.front()->dup());
-	scheduleAt(simTime() + timeout, timeoutEvent);
+	int startRRq=RRq;
+	bool somedata=false; //is there some data to send?
+	// change queue until a non empty non blocked one is found
+	do {
+		if (!coda[incRRq()].empty() && !(tv[RRq]->isScheduled()))
+			somedata=true;
+	}
+	while (!somedata && RRq!=startRRq);
+	// if found a suitable queue send a packet
+	if (somedata){
+		routePack(RRq);
+	}
 }
 
 void Router::handleMessage(cMessage *msg) {
-	if (msg == timeoutEvent) // timeout expired, re-send packet and restart timer
+	// timeout expired
+	if (dynamic_cast<Timeout*>(msg) != NULL){
 		sendPack();
-	else if (msg->getKind() == ackind){
-		// ack received
-		ev << "ACK received at " << ((int) getParentModule()->par("addr")) << endl;
-		cancelEvent(timeoutEvent);
-		delete coda.pop(); // delete committed packet
-		delete msg; // delete ACK
-		if (!coda.empty())
-			sendPack();
-	} else {
-		// arrived a new packet
-		Pack *p = check_and_cast<Pack *>(msg);
-		int addr = getParentModule()->par("addr");
-		int dst = p->getDst();
-
-		if (dst == addr) {
-			// arrived at destination: consume
-			sendACK(msg);
-			send(p, "consume");
-			ev << "Reached node " << addr << endl;
-		}
-		else if (full()) // discard packet
-		{
-			// message lost
-			delete msg;
-			ev << "Message lost" << endl;
-		} else {
-			// forward message
-			sendACK(msg);
-			coda.insert(p);
-			if (!timeoutEvent->isScheduled())
-				sendPack();
-		}
+		return;
 	}
+	// ack received
+	if (dynamic_cast<Ack*>(msg) != NULL){
+		Ack* ap=(Ack*) msg;
+		ev << "ACK received at " << ((int) getParentModule()->par("addr")) << endl;
+		int q=ap->getQueue();
+		cancelEvent(tv[q]); // cancel timeout
+		delete coda[q].pop(); // delete committed packet
+		delete ap; // delete ACK
+		sendPack();
+		return;
+	}
+	// arrived a new packet
+	Pack *p = check_and_cast<Pack *>(msg);
+	RcvPack(p);
+	sendPack();
 }
+
+
