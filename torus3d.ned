@@ -27,7 +27,7 @@ network Torus3d
     parameters:
         int kX = default(2);
         int kY = default(2);
-        int kZ = default(2);
+        int kZ = default(4);
         @display("i=block/network2");
     types:
         channel Chan extends ned.DatarateChannel
