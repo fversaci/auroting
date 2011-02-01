@@ -90,10 +90,6 @@ void Router::sendACK(Pack *mess){
 	}
 	// otherwise send ACK back
 	int ind=orig->getIndex();
-	if (ind%2==0)
-		++ind;
-	else
-		--ind;
 	Ack *ackpack=new Ack();
 	ackpack->setQueue(mess->getQueue());
 	send(ackpack, "gate$o", ind);
