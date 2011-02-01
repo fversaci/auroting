@@ -92,8 +92,10 @@ vector<int> Router::minimal(Pack* p){
 	// packet destination coordinates
 	vector<int> dest=addr2coor(p->getDst());
 	for (int i=0; i<dim; ++i){
-		int d=(dest[i]-coor[i])%kCoor[i];
-		if (d != 0 && d <= kCoor[i]/2)
+		int d=(kCoor[i]+dest[i]-coor[i])%kCoor[i]; // (N % k in not well defined if N<0 in C)
+		if (d==0)
+			continue;
+		if (d <= kCoor[i]/2)
 			r.push_back(2*i); // Coor[i]+
 		else
 			r.push_back(2*i+1); // Coor[i]-
@@ -177,7 +179,7 @@ void Router::enqueue(Pack* p, int q){
 	if (full(q))
 	{
 		delete p;
-		ev << "Message lost" << endl;
+		ev << "Message lost at queue " << q << endl;
 		return;
 	}
 
@@ -217,16 +219,19 @@ void Router::RcvPack(Pack* p){
 }
 
 void Router::sendPack(){
-	int startRRq=RRq;
-	bool somedata=false; //is there some data to send?
-	// change queue until a non empty non blocked one is found
-	do {
-		if (!coda[incRRq()].empty() && !(tv[RRq]->isScheduled()))
-			somedata=true;
-	}
-	while (!somedata && RRq!=startRRq);
-	// if found a suitable queue send a packet
-	if (somedata){
+	while(true){
+		int startRRq=RRq;
+		bool somedata=false; //is there some data to send?
+		// change queue until a non empty non blocked one is found
+		do {
+			if (!coda[incRRq()].empty() && !(tv[RRq]->isScheduled()))
+				somedata=true;
+		}
+		while (!somedata && RRq!=startRRq);
+		// if no free queue then exit
+		if (!somedata)
+			break;
+		// if found a suitable queue send a packet from it a restart looking
 		routePack(RRq);
 	}
 }

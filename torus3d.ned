@@ -27,7 +27,7 @@ network Torus3d
     parameters:
         int kX = default(2);
         int kY = default(2);
-        int kZ = default(4);
+        int kZ = default(2);
         @display("i=block/network2");
     types:
         channel Chan extends ned.DatarateChannel
@@ -39,7 +39,7 @@ network Torus3d
         };
     connections:
         // (x,y,z) maps to x+y*kX+z*kX*kY
-        for x=0..kY-1, for y=0..kX-1, for z=0..kZ-1 {
+        for x=0..kX-1, for y=0..kY-1, for z=0..kZ-1 {
             node[x+y*kX+z*kX*kY].gate[0] <--> Chan <--> node[(x+1)%kX+y*kX+z*kX*kY].gate[1];
             node[x+y*kX+z*kX*kY].gate[2] <--> Chan <--> node[x+((y+1)%kY)*kX+z*kX*kY].gate[3];
             node[x+y*kX+z*kX*kY].gate[4] <--> Chan <--> node[x+y*kX+((z+1)%kZ)*kX*kY].gate[5];
