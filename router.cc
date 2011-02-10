@@ -25,7 +25,7 @@ private:
 	cQueue coda[qs]; ///< vector queue  0=A, 1=B, 2=C
 	Timeout* tv[qs]; ///< vector of timeouts for the queues
 	int RRq; ///< RoundRobin queue selector \f$ \in \f$ {0=A, 1=B, 2=C}
-	inline void RcvPack(Pack* p); ///< put the packet in the right queue
+	inline void rcvPack(Pack* p); ///< put the packet in the right queue
 	/// enqueue p in coda[q] (drop packet if full(q) or send ACK if insert works)
 	void enqueue(Pack* p, int q);
 	inline bool full(int q);
@@ -41,9 +41,12 @@ private:
 	bool Rtest(vector<int> dir);
 	/// test the existence of a "smaller" (Left order) neighbor along the given directions
 	bool Ltest(vector<int> dir);
+	long numRcvd;
 protected:
 	virtual void handleMessage(cMessage *msg);
 	virtual void initialize();
+	virtual void finish();
+	virtual void updateDisplay();
 public:
 	Router();
 	virtual ~Router();
@@ -132,6 +135,19 @@ void Router::initialize(){
 	for (int c=0; c<qs; ++c){
 		tv[c]=new Timeout();
 	}
+    numRcvd = 0;
+    WATCH(numRcvd);
+}
+
+void Router::finish(){
+	recordScalar("#received", numRcvd);
+}
+
+void Router::updateDisplay()
+{
+    char buf[10];
+    sprintf(buf, "%ld", numRcvd);
+    getParentModule()->getDisplayString().setTagArg("t",0,buf);
 }
 
 
@@ -143,6 +159,7 @@ void Router::routePack(int q){
 		// arrived at destination: consume
 		send(pac, "consume");
 		ev << "Reached node " << addr << endl;
+		getParentModule()->bubble("Arrived!");
 		delete coda[q].pop();
 		return;
 	}
@@ -179,7 +196,7 @@ void Router::enqueue(Pack* p, int q){
 	if (full(q))
 	{
 		delete p;
-		ev << "Message lost at queue " << q << endl;
+		getParentModule()->bubble("Packet dropped!");
 		return;
 	}
 
@@ -189,7 +206,7 @@ void Router::enqueue(Pack* p, int q){
 	coda[q].insert(p);
 }
 
-void Router::RcvPack(Pack* p){
+void Router::rcvPack(Pack* p){
 	int q=p->getQueue();
 
 	// if it has just been injected insert it in coda[0]
@@ -228,15 +245,18 @@ void Router::sendPack(){
 				somedata=true;
 		}
 		while (!somedata && RRq!=startRRq);
-		// if no free queue then exit
+		// if no free queues, then exit
 		if (!somedata)
 			break;
-		// if found a suitable queue send a packet from it a restart looking
+		// if found a suitable queue send a packet from it and restart looking
 		routePack(RRq);
 	}
 }
 
 void Router::handleMessage(cMessage *msg) {
+	++numRcvd;
+	if (ev.isGUI())
+		updateDisplay();
 	// timeout expired
 	if (dynamic_cast<Timeout*>(msg) != NULL){
 		sendPack();
@@ -255,7 +275,7 @@ void Router::handleMessage(cMessage *msg) {
 	}
 	// arrived a new packet
 	Pack *p = check_and_cast<Pack *>(msg);
-	RcvPack(p);
+	rcvPack(p);
 	sendPack();
 }
 

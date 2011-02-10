@@ -21,11 +21,13 @@ packet Pack {
     int src;
     int dst;
     int queue; // 0 = A, 1 = B, 2 = C, -1 = injection queue
+    string displayString = "b=10,10,oval,green";
 }
 
 // ACK message
 message Ack {
     int queue;
+        string displayString = "b=10,10,rect,red";    
 }
 
 // Timeout message

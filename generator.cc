@@ -30,7 +30,7 @@ void Generator::initialize() {
 	int addr = getParentModule()->par("addr");
 	nsize = getParentModule()->getVectorSize();
 	int dest = intrand(nsize);
-	string roba = "Vado verso " + IntToStr(dest);
+	string roba = "To " + IntToStr(dest);
 	Pack *msg = new Pack(roba.c_str());
 	msg->setDst(dest);
 	msg->setSrc(addr);
