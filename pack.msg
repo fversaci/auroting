@@ -21,15 +21,17 @@ packet Pack {
     int src;
     int dst;
     int queue; // 0 = A, 1 = B, 2 = C, -1 = injection queue
-    string displayString = "b=10,10,oval,green";
+    string displayString = "b=10,10,oval,blue";
 }
 
 // ACK message
 message Ack {
-    int queue;
-        string displayString = "b=10,10,rect,red";    
+    long TID; // Packet TreeId
+    string displayString = "b=10,10,rect,green";    
 }
 
-// Timeout message
-message Timeout {
+// NAK message
+message Nak {
+    int TID; // Packet TreeId
+    string displayString = "b=10,10,rect,red";    
 }

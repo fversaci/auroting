@@ -7,14 +7,16 @@
 
 #include <omnetpp.h>
 #include <vector>
+#include <map>
 #include "pack_m.h"
 using namespace std;
 
 class Router: public cSimpleModule {
 private:
-	static const int qs=3; ///< number of central queues
-	static const int dim=3; ///< number of dimensions of the torus
-	simtime_t timeout;  ///< timeout
+	/// number of central queues
+	static const int qs=3;
+	/// number of dimensions of the torus
+	static const int dim=3;
 	int queueSize;
 	/// router node coordinates
 	vector<int> coor;
@@ -22,16 +24,27 @@ private:
 	vector<int> kCoor;
 	/// parent node address
 	int addr;
-	cQueue coda[qs]; ///< vector queue  0=A, 1=B, 2=C
-	Timeout* tv[qs]; ///< vector of timeouts for the queues
-	int RRq; ///< RoundRobin queue selector \f$ \in \f$ {0=A, 1=B, 2=C}
-	inline void rcvPack(Pack* p); ///< put the packet in the right queue
+	/// vector queue  0=A, 1=B, 2=C
+	cQueue coda[qs];
+	/// map of not ACKed packages
+	map<long, Pack*> mrep;
+	/// RoundRobin queue selector \f$ \in \f$ {0=A, 1=B, 2=C}
+	int RRq;
+	/// put the packet in the right queue
+	inline void rcvPack(Pack* p);
 	/// enqueue p in coda[q] (drop packet if full(q) or send ACK if insert works)
 	void enqueue(Pack* p, int q);
+	/// test if given queue is full
 	inline bool full(int q);
+	/// send NAK to a packet
+	inline void sendNAK(Pack *mess);
+	/// send ACK to a packet
 	inline void sendACK(Pack *mess);
-	inline void routePack(int q);
+	/// route a packet
+	inline void routePack(Pack* p);
+	/// Send some packet from a queue (if available)
 	inline void sendPack();
+	/// increment the round-robin queue index
 	inline int incRRq();
 	/// return minimal paths to destination
 	vector<int> minimal(Pack* p);
@@ -41,6 +54,11 @@ private:
 	bool Rtest(vector<int> dir);
 	/// test the existence of a "smaller" (Left order) neighbor along the given directions
 	bool Ltest(vector<int> dir);
+	/// handle ACK messages
+    void handleACK(Ack * ap);
+	/// handle NAK messages
+    void handleNAK(Nak * ap);
+	/// Packets received (both routed and consumed)
 	long numRcvd;
 protected:
 	virtual void handleMessage(cMessage *msg);
@@ -59,9 +77,6 @@ Router::Router(){
 }
 
 Router::~Router(){
-	for (int c=0; c<qs; ++c){
-		delete(tv[c]);
-	}
 }
 
 bool Router::Rtest(vector<int> dir){
@@ -123,7 +138,6 @@ vector<int> Router::addr2coor(int a){
 }
 
 void Router::initialize(){
-	timeout = .001 * (simtime_t) par("timeout"); // in milliseconds
 	queueSize = par("queueSize");
 	addr = getParentModule()->par("addr");
 	kCoor.assign(3,0);
@@ -132,9 +146,9 @@ void Router::initialize(){
 	kCoor[2] = getParentModule()->getParentModule()->par("kZ");
 	coor = addr2coor(addr);
 	RRq = 0;
-	for (int c=0; c<qs; ++c){
-		tv[c]=new Timeout();
-	}
+	coda[0].setName("Queue A");
+	coda[1].setName("Queue B");
+	coda[2].setName("Queue C");
     numRcvd = 0;
     WATCH(numRcvd);
 }
@@ -150,24 +164,24 @@ void Router::updateDisplay()
     getParentModule()->getDisplayString().setTagArg("t",0,buf);
 }
 
-
-void Router::routePack(int q){
-	Pack* pac=(Pack *) coda[q].front()->dup();
+void Router::routePack(Pack* pac){
 	// at destination, consume it
 	int dst = pac->getDst();
 	if (dst == addr) {
 		// arrived at destination: consume
+		Pack *toer=mrep[pac->getTreeId()];
+		mrep.erase(pac->getTreeId());
+		drop(toer);
+		delete toer;
 		send(pac, "consume");
 		ev << "Reached node " << addr << endl;
 		getParentModule()->bubble("Arrived!");
-		delete coda[q].pop();
 		return;
 	}
 	// otherwise forward
 	vector<int> dirs=minimal(pac);
 	int d=dirs[intrand(dirs.size())];
 	send(pac, "gate$o", d);
-	scheduleAt(simTime() + timeout, tv[pac->getQueue()]);
 }
 
 
@@ -187,19 +201,36 @@ void Router::sendACK(Pack *mess){
 	// otherwise send ACK back
 	int ind=orig->getIndex();
 	Ack *ackpack=new Ack();
-	ackpack->setQueue(mess->getQueue());
+	ackpack->setTID(mess->getTreeId());
 	send(ackpack, "gate$o", ind);
 }
 
-void Router::enqueue(Pack* p, int q){
-	// if queue full drop the packet
-	if (full(q))
-	{
-		delete p;
-		getParentModule()->bubble("Packet dropped!");
+void Router::sendNAK(Pack *mess){
+	cGate *orig=mess->getArrivalGate();
+	// if just injected do not send NAK
+	if (orig->getId()==gate("inject")->getId()){
 		return;
 	}
+	// otherwise send NAK back
+	int ind=orig->getIndex();
+	Nak *nakpack=new Nak();
+	nakpack->setTID(mess->getTreeId());
+	send(nakpack, "gate$o", ind);
+}
 
+void Router::enqueue(Pack* p, int q){
+	// if queue full or trasmission error, drop the packet
+	bool crp=p->hasBitError();
+	if (full(q) || crp)
+	{
+		sendNAK(p);
+		delete p;
+		if (!crp)
+			getParentModule()->bubble("Packet dropped!");
+		else
+			getParentModule()->bubble("Packet corrupted!");
+		return;
+	}
 	// otherwise insert it or consume it
 	sendACK(p);
 	p->setQueue(q);
@@ -214,7 +245,6 @@ void Router::rcvPack(Pack* p){
 		enqueue(p,0);
 		return;
 	}
-
 	// compute minimal possible directions
 	vector<int> dirs=minimal(p);
 	if (q==0){ // from queue A
@@ -239,9 +269,9 @@ void Router::sendPack(){
 	while(true){
 		int startRRq=RRq;
 		bool somedata=false; //is there some data to send?
-		// change queue until a non empty non blocked one is found
+		// change queue until a non empty one is found
 		do {
-			if (!coda[incRRq()].empty() && !(tv[RRq]->isScheduled()))
+			if (!coda[incRRq()].empty())
 				somedata=true;
 		}
 		while (!somedata && RRq!=startRRq);
@@ -249,27 +279,47 @@ void Router::sendPack(){
 		if (!somedata)
 			break;
 		// if found a suitable queue send a packet from it and restart looking
-		routePack(RRq);
+		Pack* pac=(Pack *) coda[RRq].pop();
+		take(pac);
+		mrep[pac->getTreeId()]=pac;
+		routePack(pac->dup());
 	}
 }
+
+void Router::handleACK(Ack *ap)
+{
+    ev << "ACK received at " << ((int) getParentModule()->par("addr")) << endl;
+    long tid = ap->getTID();
+    Pack *per = mrep[tid];
+    mrep.erase(tid);
+    drop(per);
+    delete per; // delete committed packet
+    delete ap; // delete ACK
+}
+
+void Router::handleNAK(Nak *ap)
+{
+    ev << "NAK received at " << ((int) getParentModule()->par("addr")) << endl;
+    long tid = ap->getTID();
+    Pack *per = mrep[tid];
+    routePack(per->dup());
+    delete ap; // delete ACK
+}
+
 
 void Router::handleMessage(cMessage *msg) {
 	++numRcvd;
 	if (ev.isGUI())
 		updateDisplay();
-	// timeout expired
-	if (dynamic_cast<Timeout*>(msg) != NULL){
+	// ACK received
+	if (dynamic_cast<Ack*>(msg) != NULL){
+		handleACK((Ack *)msg);
 		sendPack();
 		return;
 	}
-	// ack received
-	if (dynamic_cast<Ack*>(msg) != NULL){
-		Ack* ap=(Ack*) msg;
-		ev << "ACK received at " << ((int) getParentModule()->par("addr")) << endl;
-		int q=ap->getQueue();
-		cancelEvent(tv[q]); // cancel timeout
-		delete coda[q].pop(); // delete committed packet
-		delete ap; // delete ACK
+	// NAK received
+	if (dynamic_cast<Nak*>(msg) != NULL){
+		handleNAK((Nak *)msg);
 		sendPack();
 		return;
 	}
