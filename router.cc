@@ -167,12 +167,11 @@ void Router::updateDisplay()
 
 bool Router::routePack(Pack* pac){
 	// forward the packet, starting from a random admissible channel
-	int dst = pac->getDst();
 	vector<int> dirs=minimal(pac);
 	int n=dirs.size();
 	int ran=intrand(n);
-	for(unsigned int d=0; d<n; ++d){
-		int des=(ran+d)%n;
+	for(int d=0; d<n; ++d){
+		int des=dirs[(ran+d)%n];
 		if (!gate("gate$o",des)->getTransmissionChannel()->isBusy()){
 			send(pac, "gate$o", des);
 			return true;
