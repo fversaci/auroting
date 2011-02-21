@@ -22,16 +22,19 @@ packet Pack {
     int dst;
     int queue; // 0 = A, 1 = B, 2 = C, -1 = injection queue
     string displayString = "b=10,10,oval,blue";
+    ByteLength = 1000;
 }
 
 // ACK message
-message Ack {
+packet Ack {
     long TID; // Packet TreeId
-    string displayString = "b=10,10,rect,green";    
+    string displayString = "b=10,10,rect,green";
+    ByteLength = 10;    
 }
 
 // NAK message
-message Nak {
+packet Nak {
     int TID; // Packet TreeId
-    string displayString = "b=10,10,rect,red";    
+    string displayString = "b=10,10,rect,red";
+    ByteLength = 10;    
 }

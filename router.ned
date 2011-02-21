@@ -21,7 +21,6 @@ package _3buf;
 simple Router
 {
     parameters:
-        double timeout @unit(ms);
         int queueSize;
     @display("i=block/routing");
     gates:

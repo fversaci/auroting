@@ -17,6 +17,7 @@ private:
 	static const int qs=3;
 	/// number of dimensions of the torus
 	static const int dim=3;
+	/// central queues size
 	int queueSize;
 	/// router node coordinates
 	vector<int> coor;
@@ -41,7 +42,7 @@ private:
 	/// send ACK to a packet
 	inline void sendACK(Pack *mess);
 	/// route a packet
-	inline void routePack(Pack* p);
+	inline bool routePack(Pack* p);
 	/// Send some packet from a queue (if available)
 	inline void sendPack();
 	/// increment the round-robin queue index
@@ -164,24 +165,20 @@ void Router::updateDisplay()
     getParentModule()->getDisplayString().setTagArg("t",0,buf);
 }
 
-void Router::routePack(Pack* pac){
-	// at destination, consume it
+bool Router::routePack(Pack* pac){
+	// forward the packet, starting from a random admissible channel
 	int dst = pac->getDst();
-	if (dst == addr) {
-		// arrived at destination: consume
-		Pack *toer=mrep[pac->getTreeId()];
-		mrep.erase(pac->getTreeId());
-		drop(toer);
-		delete toer;
-		send(pac, "consume");
-		ev << "Reached node " << addr << endl;
-		getParentModule()->bubble("Arrived!");
-		return;
-	}
-	// otherwise forward
 	vector<int> dirs=minimal(pac);
-	int d=dirs[intrand(dirs.size())];
-	send(pac, "gate$o", d);
+	int n=dirs.size();
+	int ran=intrand(n);
+	for(unsigned int d=0; d<n; ++d){
+		int des=(ran+d)%n;
+		if (!gate("gate$o",des)->getTransmissionChannel()->isBusy()){
+			send(pac, "gate$o", des);
+			return true;
+		}
+	}
+	return false;
 }
 
 
@@ -219,27 +216,41 @@ void Router::sendNAK(Pack *mess){
 }
 
 void Router::enqueue(Pack* p, int q){
-	// if queue full or trasmission error, drop the packet
-	bool crp=p->hasBitError();
-	if (full(q) || crp)
+	// if queue full, drop the packet
+	if (full(q))
 	{
 		sendNAK(p);
 		delete p;
-		if (!crp)
-			getParentModule()->bubble("Packet dropped!");
-		else
-			getParentModule()->bubble("Packet corrupted!");
+		getParentModule()->bubble("Packet dropped!");
 		return;
 	}
-	// otherwise insert it or consume it
+	// otherwise insert it
 	sendACK(p);
 	p->setQueue(q);
 	coda[q].insert(p);
 }
 
 void Router::rcvPack(Pack* p){
+	// if packet corrupted, drop it and send NAK
+	bool crp=p->hasBitError();
+	if (crp)
+	{
+		sendNAK(p);
+		delete p;
+		getParentModule()->bubble("Packet corrupted!");
+		return;
+	}
+	// if packet at destination, consume it
+	int dst = p->getDst();
+	if (dst == addr) {
+		// arrived at destination: consume
+		send(p, "consume");
+		ev << "Reached node " << addr << endl;
+		getParentModule()->bubble("Arrived!");
+		return;
+	}
+	// otherwise try and insert it into the right queue
 	int q=p->getQueue();
-
 	// if it has just been injected insert it in coda[0]
 	if (q<0){
 		enqueue(p,0);
@@ -280,9 +291,11 @@ void Router::sendPack(){
 			break;
 		// if found a suitable queue send a packet from it and restart looking
 		Pack* pac=(Pack *) coda[RRq].pop();
-		take(pac);
-		mrep[pac->getTreeId()]=pac;
-		routePack(pac->dup());
+		// if packet succesfully routed add it to mrep
+		if (routePack(pac->dup())){
+			take(pac);
+			mrep[pac->getTreeId()]=pac;
+		}
 	}
 }
 
