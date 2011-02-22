@@ -38,3 +38,7 @@ packet Nak {
     string displayString = "b=10,10,rect,red";
     ByteLength = 10;    
 }
+
+// Timeout message
+message TO {
+}

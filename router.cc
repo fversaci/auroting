@@ -29,6 +29,8 @@ private:
 	cQueue coda[qs];
 	/// map of not ACKed packages
 	map<long, Pack*> mrep;
+	/// map of not sent (N)ACKs
+	map<cPacket*, int> nacks;
 	/// RoundRobin queue selector \f$ \in \f$ {0=A, 1=B, 2=C}
 	int RRq;
 	/// put the packet in the right queue
@@ -41,6 +43,8 @@ private:
 	inline void sendNAK(Pack *mess);
 	/// send ACK to a packet
 	inline void sendACK(Pack *mess);
+	/// send (N)ACKS waiting in nacks
+	void flushNacks();
 	/// route a packet
 	inline bool routePack(Pack* p);
 	/// Send some packet from a queue (if available)
@@ -61,6 +65,10 @@ private:
     void handleNAK(Nak * ap);
 	/// Packets received (both routed and consumed)
 	long numRcvd;
+	/// Timeout message
+	TO* tom;
+	/// Schedule timeout
+	void schedTO();
 protected:
 	virtual void handleMessage(cMessage *msg);
 	virtual void initialize();
@@ -78,6 +86,37 @@ Router::Router(){
 }
 
 Router::~Router(){
+	delete tom;
+}
+
+void Router::initialize(){
+	queueSize = par("queueSize");
+	addr = getParentModule()->par("addr");
+	kCoor.assign(3,0);
+	kCoor[0] = getParentModule()->getParentModule()->par("kX");
+	kCoor[1] = getParentModule()->getParentModule()->par("kY");
+	kCoor[2] = getParentModule()->getParentModule()->par("kZ");
+	coor = addr2coor(addr);
+	RRq = 0;
+	coda[0].setName("Queue A");
+	coda[1].setName("Queue B");
+	coda[2].setName("Queue C");
+    numRcvd = 0;
+    WATCH(numRcvd);
+    WATCH_MAP(mrep);
+    WATCH_MAP(nacks);
+    tom = new TO("Timeout");
+}
+
+void Router::finish(){
+	recordScalar("#received", numRcvd);
+}
+
+void Router::updateDisplay()
+{
+    char buf[10];
+    sprintf(buf, "%ld", numRcvd);
+    getParentModule()->getDisplayString().setTagArg("t",0,buf);
 }
 
 bool Router::Rtest(vector<int> dir){
@@ -138,31 +177,39 @@ vector<int> Router::addr2coor(int a){
 	return r;
 }
 
-void Router::initialize(){
-	queueSize = par("queueSize");
-	addr = getParentModule()->par("addr");
-	kCoor.assign(3,0);
-	kCoor[0] = getParentModule()->getParentModule()->par("kX");
-	kCoor[1] = getParentModule()->getParentModule()->par("kY");
-	kCoor[2] = getParentModule()->getParentModule()->par("kZ");
-	coor = addr2coor(addr);
-	RRq = 0;
-	coda[0].setName("Queue A");
-	coda[1].setName("Queue B");
-	coda[2].setName("Queue C");
-    numRcvd = 0;
-    WATCH(numRcvd);
+void Router::schedTO(){
+	// compute when a channel will become free
+	simtime_t res=simTime();
+	for (int i=0; i<dim; ++i){
+		simtime_t fin = gate("gate$o",i)->getTransmissionChannel()->getTransmissionFinishTime();
+		if (fin < res)
+			res=fin;
+	}
+	// cancel old timeout
+	if (tom->isScheduled())
+	    cancelEvent(tom);
+	// reschedule
+	if (res > simTime())
+		scheduleAt(res, tom);
 }
 
-void Router::finish(){
-	recordScalar("#received", numRcvd);
-}
-
-void Router::updateDisplay()
-{
-    char buf[10];
-    sprintf(buf, "%ld", numRcvd);
-    getParentModule()->getDisplayString().setTagArg("t",0,buf);
+void Router::flushNacks(){
+	// send acks if possible
+	vector<cPacket*> sent;
+	for(map<cPacket*, int>::iterator it=nacks.begin(); it!=nacks.end(); ++it){
+		if (!gate("gate$o",it->second)->getTransmissionChannel()->isBusy()){
+			send(it->first->dup(), "gate$o", it->second);
+			sent.push_back(it->first);
+		}
+	}
+	// remove the sent ones from the queue
+	for(vector<cPacket*>::iterator it=sent.begin(); it!=sent.end(); ++it){
+		nacks.erase(nacks.find(*it));
+		drop(*it);
+		delete *it;
+	}
+	// reschedule timeout
+	schedTO();
 }
 
 bool Router::routePack(Pack* pac){
@@ -174,9 +221,12 @@ bool Router::routePack(Pack* pac){
 		int des=dirs[(ran+d)%n];
 		if (!gate("gate$o",des)->getTransmissionChannel()->isBusy()){
 			send(pac, "gate$o", des);
+			// reschedule timeout
+			schedTO();
 			return true;
 		}
 	}
+	delete pac;
 	return false;
 }
 
@@ -198,7 +248,9 @@ void Router::sendACK(Pack *mess){
 	int ind=orig->getIndex();
 	Ack *ackpack=new Ack();
 	ackpack->setTID(mess->getTreeId());
-	send(ackpack, "gate$o", ind);
+	take(ackpack);
+	nacks[ackpack]=ind;
+	flushNacks();
 }
 
 void Router::sendNAK(Pack *mess){
@@ -211,7 +263,9 @@ void Router::sendNAK(Pack *mess){
 	int ind=orig->getIndex();
 	Nak *nakpack=new Nak();
 	nakpack->setTID(mess->getTreeId());
-	send(nakpack, "gate$o", ind);
+	take(nakpack);
+	nacks[nakpack]=ind;
+	flushNacks();
 }
 
 void Router::enqueue(Pack* p, int q){
@@ -243,6 +297,7 @@ void Router::rcvPack(Pack* p){
 	int dst = p->getDst();
 	if (dst == addr) {
 		// arrived at destination: consume
+		sendACK(p);
 		send(p, "consume");
 		ev << "Reached node " << addr << endl;
 		getParentModule()->bubble("Arrived!");
@@ -276,25 +331,25 @@ void Router::rcvPack(Pack* p){
 }
 
 void Router::sendPack(){
-	while(true){
-		int startRRq=RRq;
-		bool somedata=false; //is there some data to send?
-		// change queue until a non empty one is found
-		do {
-			if (!coda[incRRq()].empty())
-				somedata=true;
-		}
-		while (!somedata && RRq!=startRRq);
-		// if no free queues, then exit
-		if (!somedata)
-			break;
-		// if found a suitable queue send a packet from it and restart looking
-		Pack* pac=(Pack *) coda[RRq].pop();
-		// if packet succesfully routed add it to mrep
-		if (routePack(pac->dup())){
-			take(pac);
-			mrep[pac->getTreeId()]=pac;
-		}
+	flushNacks();
+	int startRRq=RRq;
+	bool somedata=false; //is there some data to send?
+	// change queue until a non empty one is found
+	do {
+		if (!coda[incRRq()].empty())
+			somedata=true;
+	}
+	while (!somedata && RRq!=startRRq);
+	// if no free queues, then return
+	if (!somedata)
+		return;
+	// if found a suitable queue send a packet from it and restart looking
+	Pack* pac=(Pack *) coda[RRq].front();
+	// if packet succesfully routed add it to mrep
+	if (routePack(pac->dup())){
+		pac = (Pack *) coda[RRq].pop();
+		take(pac);
+		mrep[pac->getTreeId()] = pac;
 	}
 }
 
@@ -335,10 +390,13 @@ void Router::handleMessage(cMessage *msg) {
 		sendPack();
 		return;
 	}
+	// Timeout received
+	if (dynamic_cast<TO*>(msg) != NULL){
+		sendPack();
+		return;
+	}
 	// arrived a new packet
 	Pack *p = check_and_cast<Pack *>(msg);
 	rcvPack(p);
 	sendPack();
 }
-
-
