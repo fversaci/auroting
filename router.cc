@@ -8,6 +8,7 @@
 #include <omnetpp.h>
 #include <vector>
 #include <map>
+#include <list>
 #include "pack_m.h"
 using namespace std;
 
@@ -27,6 +28,8 @@ private:
 	int addr;
 	/// vector queue  0=A, 1=B, 2=C
 	cQueue coda[qs];
+	/// queue of NAKed packets to be resent
+	list<Pack*> prior;
 	/// map of not ACKed packages
 	map<long, Pack*> mrep;
 	/// map of not sent (N)ACKs
@@ -43,14 +46,16 @@ private:
 	inline void sendNAK(Pack *mess);
 	/// send ACK to a packet
 	inline void sendACK(Pack *mess);
+	/// send NAKed packets
+	void flushPrior();
 	/// send (N)ACKS waiting in nacks
-	void flushNacks();
+	void flushNACKs();
+	/// send packs waiting in queues
+	void flushPacks();
 	/// route a packet
 	inline bool routePack(Pack* p);
-	/// Send some packet from a queue (if available)
-	inline void sendPack();
-	/// increment the round-robin queue index
-	inline int incRRq();
+	/// flush (N)ACKS and Packs
+	inline void flushAll();
 	/// return minimal paths to destination
 	vector<int> minimal(Pack* p);
 	/// convert from int address to (x,y,z) coordinates
@@ -105,6 +110,7 @@ void Router::initialize(){
     WATCH(numRcvd);
     WATCH_MAP(mrep);
     WATCH_MAP(nacks);
+    WATCH_LIST(prior);
     tom = new TO("Timeout");
 }
 
@@ -161,11 +167,6 @@ vector<int> Router::minimal(Pack* p){
 	return r;
 }
 
-int Router::incRRq(){
-	RRq = (RRq + 1) % qs;
-	return RRq;
-}
-
 vector<int> Router::addr2coor(int a){
 	vector<int> r(dim,0);
 	for(int i=0; i<dim; ++i){
@@ -178,23 +179,44 @@ vector<int> Router::addr2coor(int a){
 }
 
 void Router::schedTO(){
-	// compute when a channel will become free
-	simtime_t res=simTime();
-	for (int i=0; i<dim; ++i){
-		simtime_t fin = gate("gate$o",i)->getTransmissionChannel()->getTransmissionFinishTime();
-		if (fin < res)
-			res=fin;
-	}
 	// cancel old timeout
 	if (tom->isScheduled())
 	    cancelEvent(tom);
+	// compute when the first busy channel will become free
+	simtime_t min=simTime();
+	bool first=true;
+	for (int i=0; i<2*dim; ++i){
+		simtime_t fin = gate("gate$o",i)->getTransmissionChannel()->getTransmissionFinishTime();
+		if (fin > simTime()){
+			if (first){
+				min=fin;
+				first=false;
+			}
+			if (fin<min)
+				min=fin;
+		}
+	}
 	// reschedule
-	if (res > simTime())
-		scheduleAt(res, tom);
+	if (min > simTime())
+		scheduleAt(min, tom);
 }
 
-void Router::flushNacks(){
-	// send acks if possible
+void Router::flushPrior(){
+	for(list<Pack*>::iterator it=prior.begin(); it!=prior.end(); ){
+		// try and reroute packet
+		if (routePack((*it)->dup())){
+			// if successfully routed, add it to mrep
+			Pack* pac=*it;
+			it=prior.erase(it);
+			mrep[pac->getTreeId()] = pac;
+		}
+		else
+			++it;
+	}
+}
+
+void Router::flushNACKs(){
+	// send (N)ACKs if possible
 	vector<cPacket*> sent;
 	for(map<cPacket*, int>::iterator it=nacks.begin(); it!=nacks.end(); ++it){
 		if (!gate("gate$o",it->second)->getTransmissionChannel()->isBusy()){
@@ -208,8 +230,6 @@ void Router::flushNacks(){
 		drop(*it);
 		delete *it;
 	}
-	// reschedule timeout
-	schedTO();
 }
 
 bool Router::routePack(Pack* pac){
@@ -221,8 +241,6 @@ bool Router::routePack(Pack* pac){
 		int des=dirs[(ran+d)%n];
 		if (!gate("gate$o",des)->getTransmissionChannel()->isBusy()){
 			send(pac, "gate$o", des);
-			// reschedule timeout
-			schedTO();
 			return true;
 		}
 	}
@@ -230,9 +248,8 @@ bool Router::routePack(Pack* pac){
 	return false;
 }
 
-
 bool Router::full(int q){
-	// A,B,C queues have finite capacity
+	// A, B, C queues have finite capacity
 	if (coda[q].length() < queueSize)
 		return false;
 	return true;
@@ -250,7 +267,6 @@ void Router::sendACK(Pack *mess){
 	ackpack->setTID(mess->getTreeId());
 	take(ackpack);
 	nacks[ackpack]=ind;
-	flushNacks();
 }
 
 void Router::sendNAK(Pack *mess){
@@ -265,7 +281,6 @@ void Router::sendNAK(Pack *mess){
 	nakpack->setTID(mess->getTreeId());
 	take(nakpack);
 	nacks[nakpack]=ind;
-	flushNacks();
 }
 
 void Router::enqueue(Pack* p, int q){
@@ -299,7 +314,7 @@ void Router::rcvPack(Pack* p){
 		// arrived at destination: consume
 		sendACK(p);
 		send(p, "consume");
-		ev << "Reached node " << addr << endl;
+		ev << "Reached " << addr << " from " << p->getSrc() << endl;
 		getParentModule()->bubble("Arrived!");
 		return;
 	}
@@ -330,27 +345,35 @@ void Router::rcvPack(Pack* p){
 	enqueue(p, 2);
 }
 
-void Router::sendPack(){
-	flushNacks();
-	int startRRq=RRq;
-	bool somedata=false; //is there some data to send?
-	// change queue until a non empty one is found
+void Router::flushPacks(){
+	int q=RRq;
+	vector<int> neq; // non-empty queues
+	// save non empty queues
 	do {
-		if (!coda[incRRq()].empty())
-			somedata=true;
+		if (!coda[q=(q+1)%qs].empty())
+			neq.push_back(q);
 	}
-	while (!somedata && RRq!=startRRq);
-	// if no free queues, then return
-	if (!somedata)
-		return;
-	// if found a suitable queue send a packet from it and restart looking
-	Pack* pac=(Pack *) coda[RRq].front();
-	// if packet succesfully routed add it to mrep
-	if (routePack(pac->dup())){
-		pac = (Pack *) coda[RRq].pop();
-		take(pac);
-		mrep[pac->getTreeId()] = pac;
+	while (q!=RRq); // exits when q=RRq
+	// process non empty queues
+	if (!neq.empty()){
+		RRq=*(neq.rbegin()); // set RRq to last non empty queue
+		for (vector<int>::iterator it=neq.begin(); it!=neq.end(); ++it){
+			Pack* pac=(Pack *) coda[*it].front();
+			// try and route packet. If successful, add it to mrep
+			if (routePack(pac->dup())){
+				pac = (Pack *) coda[*it].pop();
+				take(pac);
+				mrep[pac->getTreeId()] = pac;
+			}
+		}
 	}
+}
+
+void Router::flushAll(){
+	flushNACKs();
+	flushPrior();
+	flushPacks();
+	schedTO();
 }
 
 void Router::handleACK(Ack *ap)
@@ -369,10 +392,12 @@ void Router::handleNAK(Nak *ap)
     ev << "NAK received at " << ((int) getParentModule()->par("addr")) << endl;
     long tid = ap->getTID();
     Pack *per = mrep[tid];
-    routePack(per->dup());
-    delete ap; // delete ACK
+    if (!routePack(per->dup())){
+        mrep.erase(tid);
+        prior.push_back(per);
+    }
+    delete ap; // delete NAK
 }
-
 
 void Router::handleMessage(cMessage *msg) {
 	++numRcvd;
@@ -381,22 +406,18 @@ void Router::handleMessage(cMessage *msg) {
 	// ACK received
 	if (dynamic_cast<Ack*>(msg) != NULL){
 		handleACK((Ack *)msg);
-		sendPack();
-		return;
 	}
 	// NAK received
-	if (dynamic_cast<Nak*>(msg) != NULL){
+	else if (dynamic_cast<Nak*>(msg) != NULL){
 		handleNAK((Nak *)msg);
-		sendPack();
-		return;
 	}
 	// Timeout received
-	if (dynamic_cast<TO*>(msg) != NULL){
-		sendPack();
-		return;
+	else if (dynamic_cast<TO*>(msg) != NULL){
 	}
 	// arrived a new packet
-	Pack *p = check_and_cast<Pack *>(msg);
-	rcvPack(p);
-	sendPack();
+	else {
+		Pack *p = check_and_cast<Pack *>(msg);
+		rcvPack(p);
+	}
+	flushAll();
 }
