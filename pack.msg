@@ -28,6 +28,7 @@ packet Pack {
 // ACK message
 packet Ack {
     long TID; // Packet TreeId
+    int queue; // 0 = A, 1 = B, 2 = C, -1 = injection queue
     string displayString = "b=10,10,rect,green";
     ByteLength = 10;    
 }
@@ -35,6 +36,7 @@ packet Ack {
 // NAK message
 packet Nak {
     int TID; // Packet TreeId
+    int queue; // 0 = A, 1 = B, 2 = C, -1 = injection queue
     string displayString = "b=10,10,rect,red";
     ByteLength = 10;    
 }

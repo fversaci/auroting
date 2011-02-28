@@ -20,7 +20,10 @@ package _3buf;
 //
 simple Generator
 {
-    @display("i=block/source");
+    parameters:
+        int count = default(10);
+        double delta @unit(s) = default(1ms);
+        @display("i=block/source");
     gates:
         output inject;
 }
