@@ -24,7 +24,7 @@ simple Router
         int queueSize;
     @display("i=block/routing");
     gates:
-        input inject;
+        inout inject;
         output consume;
         // gates: 0=x+ 1=x- 2=y+ 3=y- 4=z+ 5=z-
         inout gate[6];

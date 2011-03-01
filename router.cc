@@ -9,18 +9,20 @@
 #include <vector>
 #include <map>
 #include <queue>
+#include <algorithm>
 #include "pack_m.h"
 #include "ordpack.h"
 using namespace std;
 
+
 class Router: public cSimpleModule {
 private:
 	/// number of central queues
-	static const int qs=3;
+	static const int qn=3;
 	/// number of dimensions of the torus
 	static const int dim=3;
 	/// central queues size
-	unsigned int freeSpace[qs];
+	unsigned int freeSpace[qn];
 	/// router node coordinates
 	vector<int> coor;
 	/// torus dimensions sizes
@@ -28,11 +30,11 @@ private:
 	/// parent node address
 	int addr;
 	/// vector queue  0=A, 1=B, 2=C
-	priority_queue<OrdPack> coda[qs];
+	vector<OrdPack> coda[qn];
 	/// Time priority (decrements every time a new message is inserted into a queue)
 	long tp;
 	/// map of not ACKed packages
-	map<long, OrdPack> waiting[qs];
+	map<long, OrdPack> waiting[qn];
 	/// map of not sent (N)ACKs with index of output channel
 	map<cPacket*, int> nacks;
 	/// RoundRobin queue selector \f$ \in \f$ {0=A, 1=B, 2=C}
@@ -51,6 +53,10 @@ private:
 	void flushNACKs();
 	/// send packs waiting in queues
 	void flushPacks();
+	/// Select the appropriate queue for a packet
+	int sqPack(Pack* p);
+	/// requeue packets in queues
+	void adjqueues();
 	/// route a packet
 	inline bool routePack(Pack* p);
 	/// flush (N)ACKS and Packs
@@ -94,7 +100,7 @@ Router::~Router(){
 }
 
 void Router::initialize(){
-	for (int i=0; i<qs; ++i)
+	for (int i=0; i<qn; ++i)
 		freeSpace[i] = par("queueSize");
 	addr = getParentModule()->par("addr");
 	kCoor.assign(3,0);
@@ -106,8 +112,18 @@ void Router::initialize(){
 	tp = 0;
     numRcvd = 0;
     WATCH(numRcvd);
-	//for (int i=0; i<qs; ++i)
-		//WATCH_MAP(waiting[i]);
+    WATCH(coor[0]);
+    WATCH(coor[1]);
+    WATCH(coor[2]);
+    WATCH(freeSpace[0]);
+    WATCH(freeSpace[1]);
+    WATCH(freeSpace[2]);
+    WATCH_MAP(waiting[0]);
+    WATCH_VECTOR(coda[0]);
+    WATCH_MAP(waiting[1]);
+    WATCH_VECTOR(coda[1]);
+    WATCH_MAP(waiting[2]);
+    WATCH_VECTOR(coda[2]);
     WATCH_MAP(nacks);
     tom = new TO("Timeout");
 }
@@ -129,9 +145,9 @@ bool Router::Rtest(vector<int> dir){
 	for(it=dir.begin(); it!=dir.end(); ++it){
 		int d=*it/2;
 		if (*it%2==0) // X+
-			res |= (coor[d]!=kCoor[d]-1);
+			res = res || (coor[d]!=kCoor[d]-1);
 		else // X-
-			res |= (coor[d]==0);
+			res = res || (coor[d]==0);
 	}
 	return res;
 }
@@ -142,9 +158,9 @@ bool Router::Ltest(vector<int> dir){
 	for(it=dir.begin(); it!=dir.end(); ++it){
 		int d=*it/2;
 		if (*it%2==0) // X+
-			res |= (coor[d]==kCoor[d]-1);
+			res = res || (coor[d]==kCoor[d]-1);
 		else // X-
-			res |= (coor[d]!=0);
+			res = res || (coor[d]!=0);
 	}
 	return res;
 }
@@ -242,7 +258,7 @@ bool Router::full(int q){
 void Router::sendACK(Pack *mess){
 	cGate *orig=mess->getArrivalGate();
 	// if just injected do not send ACK
-	if (orig->getId()==gate("inject")->getId()){
+	if (orig->getId()==gate("inject$i")->getId()){
 		return;
 	}
 	// otherwise send ACK back
@@ -256,8 +272,10 @@ void Router::sendACK(Pack *mess){
 
 void Router::sendNAK(Pack *mess){
 	cGate *orig=mess->getArrivalGate();
-	// if just injected do not send NAK
-	if (orig->getId()==gate("inject")->getId()){
+	// if just injected send NAK to generator
+	if (orig->getId()==gate("inject$i")->getId()){
+		Nak *nakpack=new Nak();
+		send(nakpack, gate("inject$o"));
 		return;
 	}
 	// otherwise send NAK back
@@ -282,7 +300,8 @@ void Router::enqueue(Pack* p, int q){
 	sendACK(p);
 	p->setQueue(q);
 	take(p);
-	coda[q].push(OrdPack(p,--tp));
+	coda[q].push_back(OrdPack(p,--tp));
+	push_heap(coda[q].begin(), coda[q].end());
 	--freeSpace[q];
 }
 
@@ -306,31 +325,55 @@ void Router::rcvPack(Pack* p){
 		getParentModule()->bubble("Arrived!");
 		return;
 	}
-	// otherwise try and insert it into the right queue
+	// otherwise insert it into the same queue it originates from (or 0 if just injected)
 	int q=p->getQueue();
-	// if it has just been injected insert it in coda[0]
-	if (q<0){
-		enqueue(p,0);
-		return;
-	}
+	if (q<0)
+		q=0;
+	enqueue(p, q);
+}
+
+int Router::sqPack(Pack* p){
+	int q=p->getQueue();
 	// compute minimal possible directions
 	vector<int> dirs=minimal(p);
 	if (q==0){ // from queue A
-		if (Rtest(dirs)) // bigger neighbors?
-			enqueue(p, 0);
+		if (Rtest(dirs)) // bigger minimal neighbors
+			return 0;
 		else
-			enqueue(p, 1);
-		return;
+			return 1;
 	}
 	if (q==1){ // from queue B
-		if (Ltest(dirs))
-			enqueue(p, 1); // smaller neighbors?
+		if (Ltest(dirs)) // smaller minimal neighbors
+			return 1;
 		else
-			enqueue(p, 2);
-		return;
+			return 2;
 	}
 	// from queue C
-	enqueue(p, 2);
+	return 2; // smaller neighbors?
+}
+
+void Router::adjqueues(){
+	// re-enqueue from coda[1], then from coda[0]
+	for (int q=1; q>=0; --q){
+		// try and re-enqueue coda[q] packets
+		while (!coda[q].empty()){
+			// take the oldest packet in coda[q]
+			Pack* p=(Pack *) coda[q].front().p;
+			int d=sqPack(p);
+			// same destination queue or full queue --> aborts
+			if (d==q || full(d))
+				break;
+			// pop from q and push into d
+			OrdPack op=coda[q].front();
+			pop_heap(coda[q].begin(),coda[q].end());
+			coda[q].pop_back();
+			++freeSpace[q];
+			((Pack*) op.p)->setQueue(d);
+		    coda[d].push_back(op);
+		    push_heap(coda[d].begin(),coda[d].end());
+			--freeSpace[d];
+		}
+	}
 }
 
 void Router::flushPacks(){
@@ -338,7 +381,7 @@ void Router::flushPacks(){
 	vector<int> neq; // non-empty queues
 	// save non empty queues
 	do {
-		if (!coda[q=(q+1)%qs].empty())
+		if (!coda[q=(q+1)%qn].empty())
 			neq.push_back(q);
 	}
 	while (q!=RRq); // exits when q=RRq
@@ -346,11 +389,12 @@ void Router::flushPacks(){
 	if (!neq.empty()){
 		RRq=*(neq.rbegin()); // set RRq to last non empty queue
 		for (vector<int>::iterator it=neq.begin(); it!=neq.end(); ++it){
-			OrdPack op=coda[*it].top();
+			OrdPack op=coda[*it].front();
 			Pack* pac=(Pack *) op.p;
 			// try and route packet. If successful, add it to waiting[q]
 			if (routePack(pac->dup())){
-				coda[*it].pop();
+				pop_heap(coda[*it].begin(),coda[*it].end());
+				coda[*it].pop_back();
 				waiting[*it][pac->getTreeId()] = op;
 			}
 		}
@@ -358,6 +402,7 @@ void Router::flushPacks(){
 }
 
 void Router::flushAll(){
+	adjqueues();
 	flushNACKs();
 	flushPacks();
 	schedTO();
@@ -383,7 +428,8 @@ void Router::handleNAK(Nak *ap)
     int q=ap->getQueue();
     OrdPack op = waiting[q][tid];
     waiting[q].erase(tid);
-    coda[q].push(op);
+    coda[q].push_back(op);
+    push_heap(coda[q].begin(),coda[q].end());
     delete ap; // delete NAK
 }
 

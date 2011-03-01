@@ -40,7 +40,7 @@ module Node
         }
     connections:
         router.consume --> IdealChannel --> sink.consume;
-        generator.inject --> IdealChannel --> router.inject;
+        generator.inject <--> IdealChannel <--> router.inject;
         for i=0..5 {
             router.gate[i] <--> IdealChannel <--> gate[i];
         }

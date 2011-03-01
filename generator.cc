@@ -50,6 +50,7 @@ void Generator::initialize() {
 	delta = par("delta");
     tom = new TO("Send a new packet timeout");
     scheduleAt(simTime(),tom);
+    WATCH(count);
 }
 
 void Generator::genPack(){
@@ -59,14 +60,25 @@ void Generator::genPack(){
 	msg->setDst(dest);
 	msg->setSrc(addr);
 	msg->setQueue(-1);
-	send(msg, "inject");
+	send(msg, "inject$o");
 }
 
 void Generator::handleMessage(cMessage *msg){
-	if (dynamic_cast<TO*>(msg) == NULL)
-		error("Invalid message received by the generator.");
-	genPack();
+	// if NAK, add another message to count
+	if (dynamic_cast<Nak*>(msg) != NULL){
+		++count;
+		delete msg;
+	}
+	// if timeout, send a message
+	else if (dynamic_cast<TO*>(msg) != NULL){
+		genPack();
+		--count;
+	}
+	// cancel old timeout
+	if (tom->isScheduled())
+	    cancelEvent(tom);
 	// schedule next packet
-	if ((--count)>0)
+	if ((count)>0)
 		scheduleAt(simTime()+delta,tom);
+	// cout << simTime() << endl;
 }

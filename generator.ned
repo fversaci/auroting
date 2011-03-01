@@ -25,5 +25,5 @@ simple Generator
         double delta @unit(s) = default(1ms);
         @display("i=block/source");
     gates:
-        output inject;
+        inout inject;
 }
