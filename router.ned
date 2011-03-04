@@ -21,7 +21,9 @@ package _3buf;
 simple Router
 {
     parameters:
-        int queueSize;
+        int AQueueSize;
+        int BQueueSize;
+        int CQueueSize;
     @display("i=block/routing");
     gates:
         inout inject;
