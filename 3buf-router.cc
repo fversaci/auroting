@@ -15,7 +15,7 @@
 using namespace std;
 
 
-class Router: public cSimpleModule {
+class TBRouter: public cSimpleModule {
 private:
 	/// number of central queues
 	static const int qn=3;
@@ -81,21 +81,21 @@ protected:
 	virtual void finish();
 	virtual void updateDisplay();
 public:
-	Router();
-	virtual ~Router();
+	TBRouter();
+	virtual ~TBRouter();
 };
 
 // register module class with `\opp`
-Define_Module(Router);
+Define_Module(TBRouter);
 
-Router::Router(){
+TBRouter::TBRouter(){
 }
 
-Router::~Router(){
+TBRouter::~TBRouter(){
 	delete tom;
 }
 
-void Router::initialize(){
+void TBRouter::initialize(){
 	freeSpace[0] = par("AQueueSize");
 	freeSpace[1] = par("BQueueSize");
 	freeSpace[2] = par("CQueueSize");
@@ -124,18 +124,18 @@ void Router::initialize(){
 	tom = new TO("Timeout");
 }
 
-void Router::finish(){
+void TBRouter::finish(){
 	recordScalar("#received", numRcvd);
 }
 
-void Router::updateDisplay()
+void TBRouter::updateDisplay()
 {
 	char buf[10];
 	sprintf(buf, "%ld", numRcvd);
 	getParentModule()->getDisplayString().setTagArg("t",0,buf);
 }
 
-bool Router::Rtest(vector<int> dir){
+bool TBRouter::Rtest(vector<int> dir){
 	vector<int>::iterator it;
 	bool res=false;
 	for(it=dir.begin(); it!=dir.end(); ++it){
@@ -148,7 +148,7 @@ bool Router::Rtest(vector<int> dir){
 	return res;
 }
 
-bool Router::Ltest(vector<int> dir){
+bool TBRouter::Ltest(vector<int> dir){
 	vector<int>::iterator it;
 	bool res=false;
 	for(it=dir.begin(); it!=dir.end(); ++it){
@@ -161,7 +161,7 @@ bool Router::Ltest(vector<int> dir){
 	return res;
 }
 
-vector<int> Router::minimal(Pack* p){
+vector<int> TBRouter::minimal(Pack* p){
 	vector<int> r;
 	// packet destination coordinates
 	vector<int> dest=addr2coor(p->getDst());
@@ -177,7 +177,7 @@ vector<int> Router::minimal(Pack* p){
 	return r;
 }
 
-vector<int> Router::addr2coor(int a){
+vector<int> TBRouter::addr2coor(int a){
 	vector<int> r(dim,0);
 	for(int i=0; i<dim; ++i){
 		r[i] = a % kCoor[i];
@@ -188,7 +188,7 @@ vector<int> Router::addr2coor(int a){
 	return r;
 }
 
-void Router::schedTO(){
+void TBRouter::schedTO(){
 	// cancel old timeout
 	if (tom->isScheduled())
 		cancelEvent(tom);
@@ -211,7 +211,7 @@ void Router::schedTO(){
 		scheduleAt(min, tom);
 }
 
-void Router::flushNACKs(){
+void TBRouter::flushNACKs(){
 	// send (N)ACKs if possible
 	vector<cPacket*> sent;
 	for(map<cPacket*, int>::iterator it=nacks.begin(); it!=nacks.end(); ++it){
@@ -228,7 +228,7 @@ void Router::flushNACKs(){
 	}
 }
 
-bool Router::routePack(Pack* pac){
+bool TBRouter::routePack(Pack* pac){
 	// forward the packet, starting from a random admissible channel
 	vector<int> dirs=minimal(pac);
 	int n=dirs.size();
@@ -245,14 +245,14 @@ bool Router::routePack(Pack* pac){
 	return false;
 }
 
-bool Router::full(int q){
+bool TBRouter::full(int q){
 	// A, B, C queues have finite capacity
 	if (coda[q].size() < freeSpace[q])
 		return false;
 	return true;
 }
 
-void Router::sendACK(Pack *mess){
+void TBRouter::sendACK(Pack *mess){
 	cGate *orig=mess->getArrivalGate();
 	// if just injected do not send ACK
 	if (orig->getId()==gate("inject$i")->getId()){
@@ -267,7 +267,7 @@ void Router::sendACK(Pack *mess){
 	nacks[ackpack]=ind;
 }
 
-void Router::sendNAK(Pack *mess){
+void TBRouter::sendNAK(Pack *mess){
 	cGate *orig=mess->getArrivalGate();
 	// if just injected send NAK to generator
 	if (orig->getId()==gate("inject$i")->getId()){
@@ -284,7 +284,7 @@ void Router::sendNAK(Pack *mess){
 	nacks[nakpack]=ind;
 }
 
-void Router::enqueue(Pack* p, int q){
+void TBRouter::enqueue(Pack* p, int q){
 	// if queue full, drop the packet
 	if (full(q))
 	{
@@ -302,7 +302,7 @@ void Router::enqueue(Pack* p, int q){
 	--freeSpace[q];
 }
 
-void Router::rcvPack(Pack* p){
+void TBRouter::rcvPack(Pack* p){
 	// if packet corrupted, drop it and send NAK
 	bool crp=p->hasBitError();
 	if (crp)
@@ -330,7 +330,7 @@ void Router::rcvPack(Pack* p){
 	enqueue(p, q);
 }
 
-int Router::sqPack(Pack* p){
+int TBRouter::sqPack(Pack* p){
 	int q=p->getQueue();
 	// compute minimal possible directions
 	vector<int> dirs=minimal(p);
@@ -350,7 +350,7 @@ int Router::sqPack(Pack* p){
 	return 2; // smaller neighbors?
 }
 
-void Router::movePacks(){
+void TBRouter::movePacks(){
 	bool goon;
 	do {
 		goon=false;
@@ -385,13 +385,13 @@ void Router::movePacks(){
 	} while(goon);
 }
 
-void Router::flushAll(){
+void TBRouter::flushAll(){
 	flushNACKs();
 	movePacks();
 	schedTO();
 }
 
-void Router::handleACK(Ack *ap)
+void TBRouter::handleACK(Ack *ap)
 {
 	ev << (ap->getTID()) <<  ": ACK at " << addr << endl;
 	long tid = ap->getTID();
@@ -404,7 +404,7 @@ void Router::handleACK(Ack *ap)
 	delete ap; // delete ACK
 }
 
-void Router::handleNAK(Nak *ap)
+void TBRouter::handleNAK(Nak *ap)
 {
 	ev << (ap->getTID()) <<  ": NAK at " << addr << endl;
 	long tid = ap->getTID();
@@ -416,7 +416,7 @@ void Router::handleNAK(Nak *ap)
 	delete ap; // delete NAK
 }
 
-void Router::handleMessage(cMessage *msg) {
+void TBRouter::handleMessage(cMessage *msg) {
 	if (ev.isGUI())
 		updateDisplay();
 	// ACK received

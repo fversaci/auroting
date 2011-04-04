@@ -18,7 +18,7 @@ package _3buf;
 //
 // TODO auto-generated type
 //
-simple Router
+simple TBRouter
 {
     parameters:
         int AQueueSize;
