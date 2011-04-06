@@ -15,9 +15,7 @@
 
 package _3buf;
 
-//
-// TODO auto-generated type
-//
+// Three-buffer Router
 simple TBRouter
 {
     parameters:

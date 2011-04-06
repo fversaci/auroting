@@ -15,7 +15,7 @@ public:
 	friend bool operator<(const OrdPack& o1, const OrdPack& o2);
 	/// Stream operator
 	friend ostream& operator<<(ostream& os, const OrdPack& o);
-	/// Costructors
+	/// Constructors
 	OrdPack(void* pp, long oo) : p(pp), ord(oo) {};
 	OrdPack() {};
 };

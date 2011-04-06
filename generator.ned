@@ -15,9 +15,7 @@
 
 package _3buf;
 
-//
-// TODO auto-generated type
-//
+// Packet generator
 simple Generator
 {
     parameters:

@@ -17,10 +17,8 @@
 
 package _3buf;
 
-import ned.DatarateChannel;
-
 //
-// A generated network with torus topology.
+// k-ary 3d torus topology.
 //
 network Torus3d
 {
@@ -28,7 +26,7 @@ network Torus3d
         int kX = default(2);
         int kY = default(2);
         int kZ = default(2);
-        @display("i=block/network2");        
+        @display("i=block/network2");
     types:
         channel Chan extends ned.DatarateChannel
         {
@@ -36,7 +34,7 @@ network Torus3d
     submodules:
         node[kX*kY*kZ]: Node {
             addr = index;
-        };
+        }
     connections:
         // (x,y,z) maps to x+y*kX+z*kX*kY
         for x=0..kX-1, for y=0..kY-1, for z=0..kZ-1 {

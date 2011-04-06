@@ -7,6 +7,7 @@
 
 #include <omnetpp.h>
 
+// Sink for packet consumption
 class Sink: public cSimpleModule {
 protected:
 	virtual void handleMessage(cMessage *msg);

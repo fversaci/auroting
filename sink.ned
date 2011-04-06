@@ -15,9 +15,7 @@
 
 package _3buf;
 
-//
-// TODO auto-generated module
-//
+// Sink for packet consumption
 simple Sink
 {
     @display("i=block/sink");

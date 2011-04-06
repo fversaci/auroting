@@ -15,31 +15,16 @@
 
 package _3buf;
 
-import ned.IdealChannel;
-
-
-// Network Node (Generator+Sink+Router and connections)
-module Node
+// Bubble Router
+simple BRouter
 {
     parameters:
-        @display("b=15,15,oval,yellow");
-        int addr = default(0);
+        int EscQueueSize; // size of escape (bubble) queues
+        int AdapQueueSize; // size of adaptive queues
+    @display("i=block/routing");
     gates:
+        inout inject;
+        output consume;
+        // gates: 0=x+ 1=x- 2=y+ 3=y- 4=z+ 5=z-
         inout gate[6];
-    submodules:
-        generator: Generator {
-            @display("p=60,56");
-        }
-        router: TBRouter {
-            @display("p=119,154");
-        }
-        sink: Sink {
-            @display("p=179,56");
-        }
-    connections:
-        router.consume --> IdealChannel --> sink.consume;
-        generator.inject <--> IdealChannel <--> router.inject;
-        for i=0..5 {
-            router.gate[i] <--> IdealChannel <--> gate[i];
-        }
 }

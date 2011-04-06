@@ -14,7 +14,7 @@
 #include "ordpack.h"
 using namespace std;
 
-
+/// Three-buffer router
 class TBRouter: public cSimpleModule {
 private:
 	/// number of central queues
