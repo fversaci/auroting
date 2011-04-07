@@ -21,9 +21,9 @@ class BRouter: public cSimpleModule {
 private:
   /// number of dimensions of the torus
   static const int dim=3;
-  /// number of escape and adaptive queues (one each for unidirectional gate)
-  static const int qn=2*dim;
-  /// central queues size
+  /// number of queues (an escape and adaptive one for each unidirectional gate)
+  static const int qn=4*dim;
+  /// queues sizes
   unsigned int freeSpace[qn];
   /// router node coordinates
   vector<int> coor;
@@ -31,7 +31,7 @@ private:
   vector<int> kCoor;
   /// parent node address
   int addr;
-  /// vector queue  0=x+, 1=x-, 2=y+, 3=y-, 4=z+, 5=z-
+  /// vector queue  0=x+e, 1=x+a, 2=x-e, 3=x-a, 4=y+e, 5=y+a, 6=y-e, 7=y-a, 8=z+e, 9=z+a, 10=z-e, 11=z-a
   vector<OrdPack> coda[qn];
   /// Time priority (decrements every time a new message is inserted into a queue)
   long tp;
@@ -39,10 +39,12 @@ private:
   map<long, OrdPack> waiting[qn];
   /// map of not sent (N)ACKs with index of output channel
   map<cPacket*, int> nacks;
-  /// put the packet in the right queue
-  inline void rcvPack(Pack* p);
-  /// enqueue p in coda[q] (drop packet if full(q) or send ACK if insert works)
-  void enqueue(Pack* p, int q);
+  /// enqueue the packet
+  inline void enqueue(Pack* p, int q);
+  /// handle the incoming packet
+  inline void rcvPack(Pack* p); 
+  /// insert p in the right coda
+  void routePack(Pack* p);
   /// test if given queue is full
   inline bool full(int q);
   /// send NAK to a packet
@@ -51,22 +53,14 @@ private:
   inline void sendACK(Pack *mess);
   /// send (N)ACKS waiting in nacks
   void flushNACKs();
-  /// send/rearrange packets
-  void movePacks();
-  /// Select the right queue for a packet
-  int sqPack(Pack* p);
-  /// route a packet
-  inline bool routePack(Pack* p);
+  /// send packets
+  void sendPacks();
   /// flush (N)ACKS and Packs
   inline void flushAll();
   /// return minimal paths to destination
   vector<int> minimal(Pack* p);
   /// convert from int address to (x,y,z) coordinates
   vector<int> addr2coor(int a);
-  /// test the existence of a "bigger" (Right order) neighbor along the given directions
-  bool Rtest(vector<int> dir);
-  /// test the existence of a "smaller" (Left order) neighbor along the given directions
-  bool Ltest(vector<int> dir);
   /// handle ACK messages
   void handleACK(Ack * ap);
   /// handle NAK messages
@@ -98,9 +92,10 @@ BRouter::~BRouter(){
 }
 
 void BRouter::initialize(){
-  freeSpace[0] = par("AQueueSize");
-  freeSpace[1] = par("BQueueSize");
-  freeSpace[2] = par("CQueueSize");
+  for (int i=0; i<dim; ++i){
+    freeSpace[2*i] = par("EscQueueSize");
+    freeSpace[2*i+1] = par("AdapQueueSize");
+  }
   addr = getParentModule()->par("addr");
   kCoor.assign(3,0);
   kCoor[0] = getParentModule()->getParentModule()->par("kX");
@@ -137,31 +132,6 @@ void BRouter::updateDisplay()
   getParentModule()->getDisplayString().setTagArg("t",0,buf);
 }
 
-bool BRouter::Rtest(vector<int> dir){
-  vector<int>::iterator it;
-  bool res=false;
-  for(it=dir.begin(); it!=dir.end(); ++it){
-    int d=*it/2;
-    if (*it%2==0) // X+
-      res = res || (coor[d]!=kCoor[d]-1);
-    else // X-
-      res = res || (coor[d]==0);
-  }
-  return res;
-}
-
-bool BRouter::Ltest(vector<int> dir){
-  vector<int>::iterator it;
-  bool res=false;
-  for(it=dir.begin(); it!=dir.end(); ++it){
-    int d=*it/2;
-    if (*it%2==0) // X+
-      res = res || (coor[d]==kCoor[d]-1);
-    else // X-
-      res = res || (coor[d]!=0);
-  }
-  return res;
-}
 
 vector<int> BRouter::minimal(Pack* p){
   vector<int> r;
@@ -230,22 +200,6 @@ void BRouter::flushNACKs(){
   }
 }
 
-bool BRouter::routePack(Pack* pac){
-  // forward the packet, starting from a random admissible channel
-  vector<int> dirs=minimal(pac);
-  int n=dirs.size();
-  int ran=intrand(n);
-  for(int d=0; d<n; ++d){
-    int des=dirs[(ran+d)%n];
-    if (!gate("gate$o",des)->getTransmissionChannel()->isBusy()){
-      send(pac, "gate$o", des);
-      ev << (pac->getTreeId()) <<  ": From " << addr << endl;
-      return true;
-    }
-  }
-  delete pac;
-  return false;
-}
 
 bool BRouter::full(int q){
   // queues have finite capacity
@@ -287,7 +241,30 @@ void BRouter::sendNAK(Pack *mess){
 }
 
 void BRouter::enqueue(Pack* p, int q){
-  // if queue full, drop the packet
+  // q has already been tested to be free
+  sendACK(p);
+  p->setQueue(q);
+  take(p);
+  coda[q].push_back(OrdPack(p,--tp));
+  push_heap(coda[q].begin(), coda[q].end());
+  --freeSpace[q];
+}
+
+void BRouter::routePack(Pack* p){
+  // try and enqueue in an adaptive queue along some (random) minimal path
+  vector<int> dirs=minimal(p);
+  int n=dirs.size();
+  int ran=intrand(n);
+  for(int d=0; d<n; ++d){
+    int q=1+2*dirs[(ran+d)%n];
+    if (!full(q)){ // if one free queue is found insert the packet 
+      enqueue(p,q);
+      return;
+    }
+  }
+  // if all adaptive queues are full, try the DOR escape one
+  int q=2*dirs[0];
+  // if full drop the packet, if injected it needs a bubble too
   if (full(q))
     {
       sendNAK(p);
@@ -296,12 +273,7 @@ void BRouter::enqueue(Pack* p, int q){
       return;
     }
   // otherwise insert it
-  sendACK(p);
-  p->setQueue(q);
-  take(p);
-  coda[q].push_back(OrdPack(p,--tp));
-  push_heap(coda[q].begin(), coda[q].end());
-  --freeSpace[q];
+  enqueue(p,q);
 }
 
 void BRouter::rcvPack(Pack* p){
@@ -325,71 +297,33 @@ void BRouter::rcvPack(Pack* p){
     getParentModule()->bubble("Arrived!");
     return;
   }
-  // otherwise insert it into the same queue it originates from (or 0 if just injected)
-  int q=p->getQueue();
-  if (q<0)
-    q=0;
-  enqueue(p, q);
+  // otherwise insert it into the right queue
+  routePack(p);
 }
 
-int BRouter::sqPack(Pack* p){
-  int q=p->getQueue();
-  // compute minimal possible directions
-  vector<int> dirs=minimal(p);
-  if (q==0){ // from queue A
-    if (Rtest(dirs)) // bigger minimal neighbors
-      return 0;
-    else
-      return 1;
-  }
-  if (q==1){ // from queue B
-    if (Ltest(dirs)) // smaller minimal neighbors
-      return 1;
-    else
-      return 2;
-  }
-  // from queue C
-  return 2; // smaller neighbors?
-}
 
-void BRouter::movePacks(){
-  bool goon;
-  do {
-    goon=false;
-    for (int q=2; q>=0; --q){
-      // process non empty queues
-      if (!coda[q].empty()){
-	OrdPack op=coda[q].front();
-	Pack* pac=(Pack *) op.p;
-	// if not in the right queue try and move it
-	int d=sqPack(pac);
-	if (d!=q && !full(d)){
-	  // pop from q and push into d
-	  goon = true;
-	  OrdPack op=coda[q].front();
-	  pop_heap(coda[q].begin(),coda[q].end());
-	  coda[q].pop_back();
-	  ++freeSpace[q];
-	  ((Pack*) op.p)->setQueue(d);
-	  coda[d].push_back(op);
-	  push_heap(coda[d].begin(),coda[d].end());
-	  --freeSpace[d];
-	}
-	// try and route packet. If successful, add it to waiting[q]
-	else if (d==q && routePack(pac->dup())){
-	  goon=true;
-	  pop_heap(coda[q].begin(),coda[q].end());
-	  coda[q].pop_back();
-	  waiting[q][pac->getTreeId()] = op;
-	}
+void BRouter::sendPacks(){
+  for (int q=0; q<qn; ++q){
+    // process non empty queues
+    if (!coda[q].empty()){
+      OrdPack op=coda[q].front();
+      Pack* pac=(Pack *) op.p;
+      // try and route a packet. If successful, add it to waiting[q]
+      int des=q/2;
+      if (!gate("gate$o",des)->getTransmissionChannel()->isBusy()){
+	send(pac, "gate$o", des);
+	ev << (pac->getTreeId()) <<  ": From " << addr << endl;
+	pop_heap(coda[q].begin(),coda[q].end());
+	coda[q].pop_back();
+	waiting[q][pac->getTreeId()] = op;
       }
     }
-  } while(goon);
+  }
 }
 
 void BRouter::flushAll(){
   flushNACKs();
-  movePacks();
+  sendPacks();
   schedTO();
 }
 
