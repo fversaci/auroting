@@ -47,6 +47,8 @@ private:
   void routePack(Pack* p);
   /// test if given queue is full
   inline bool full(int q);
+  /// test if given queue would leave a bubble after an insertion
+  inline bool bubble(int q);
   /// send NAK to a packet
   inline void sendNAK(Pack *mess);
   /// send ACK to a packet
@@ -92,7 +94,7 @@ BRouter::~BRouter(){
 }
 
 void BRouter::initialize(){
-  for (int i=0; i<dim; ++i){
+  for (int i=0; i<2*dim; ++i){
     freeSpace[2*i] = par("EscQueueSize");
     freeSpace[2*i+1] = par("AdapQueueSize");
   }
@@ -108,15 +110,11 @@ void BRouter::initialize(){
   WATCH(coor[0]);
   WATCH(coor[1]);
   WATCH(coor[2]);
-  WATCH(freeSpace[0]);
-  WATCH(freeSpace[1]);
-  WATCH(freeSpace[2]);
-  WATCH_MAP(waiting[0]);
-  WATCH_VECTOR(coda[0]);
-  WATCH_MAP(waiting[1]);
-  WATCH_VECTOR(coda[1]);
-  WATCH_MAP(waiting[2]);
-  WATCH_VECTOR(coda[2]);
+  for (int i=0; i<qn; ++i){
+    createWatch("freeSpace",freeSpace[i]);
+    createStdMapWatcher("waiting",waiting[i]);
+    createStdVectorWatcher("coda",coda[i]);
+  }
   WATCH_MAP(nacks);
   tom = new TO("Timeout");
 }
@@ -200,12 +198,18 @@ void BRouter::flushNACKs(){
   }
 }
 
-
 bool BRouter::full(int q){
   // queues have finite capacity
   if (coda[q].size() < freeSpace[q])
     return false;
   return true;
+}
+
+bool BRouter::bubble(int q){
+  // true if q has two free slots
+  if (coda[q].size() < freeSpace[q]-1)
+    return true;
+  return false;
 }
 
 void BRouter::sendACK(Pack *mess){
@@ -241,7 +245,7 @@ void BRouter::sendNAK(Pack *mess){
 }
 
 void BRouter::enqueue(Pack* p, int q){
-  // q has already been tested to be free
+  // q has already been tested to have free slots
   sendACK(p);
   p->setQueue(q);
   take(p);
@@ -251,7 +255,8 @@ void BRouter::enqueue(Pack* p, int q){
 }
 
 void BRouter::routePack(Pack* p){
-  // try and enqueue in an adaptive queue along some (random) minimal path
+  // try and enqueue in an adaptive queue along some (random) minimal path.
+  // Note: bubble paper prefers to continue along the same direction
   vector<int> dirs=minimal(p);
   int n=dirs.size();
   int ran=intrand(n);
@@ -264,14 +269,16 @@ void BRouter::routePack(Pack* p){
   }
   // if all adaptive queues are full, try the DOR escape one
   int q=2*dirs[0];
-  // if full drop the packet, if injected it needs a bubble too
-  if (full(q))
-    {
-      sendNAK(p);
-      delete p;
-      getParentModule()->bubble("Packet dropped!");
-      return;
-    }
+  /*
+   * if full drop the packet, if just injected (i.e., it comes from a
+   * queue different from q) also requires a bubble
+   */
+  if (full(q) || (!bubble(q) && p->getQueue()!=q) ) {
+    sendNAK(p);
+    delete p;
+    getParentModule()->bubble("Packet dropped!");
+    return;
+  }
   // otherwise insert it
   enqueue(p,q);
 }
@@ -311,7 +318,7 @@ void BRouter::sendPacks(){
       // try and route a packet. If successful, add it to waiting[q]
       int des=q/2;
       if (!gate("gate$o",des)->getTransmissionChannel()->isBusy()){
-	send(pac, "gate$o", des);
+	send(pac->dup(), "gate$o", des);
 	ev << (pac->getTreeId()) <<  ": From " << addr << endl;
 	pop_heap(coda[q].begin(),coda[q].end());
 	coda[q].pop_back();

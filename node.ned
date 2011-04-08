@@ -30,7 +30,7 @@ module Node
         generator: Generator {
             @display("p=60,56");
         }
-        router: TBRouter {
+        router: BRouter {
             @display("p=119,154");
         }
         sink: Sink {
