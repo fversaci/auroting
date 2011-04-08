@@ -20,7 +20,7 @@ package _3buf;
 //
 // k-ary 3d torus topology.
 //
-network Torus3d
+network Torus3d_tb
 {
     parameters:
         int kX = default(2);
@@ -32,7 +32,7 @@ network Torus3d
         {
         }
     submodules:
-        node[kX*kY*kZ]: Node {
+        node[kX*kY*kZ]: TbNode {
             addr = index;
         }
     connections:

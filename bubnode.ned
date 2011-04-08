@@ -19,7 +19,7 @@ import ned.IdealChannel;
 
 
 // Network Node (Generator+Sink+Router and connections)
-module Node
+module BubNode
 {
     parameters:
         @display("b=15,15,oval,yellow");
