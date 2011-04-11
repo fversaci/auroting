@@ -34,9 +34,11 @@ network Torus3d_tb
     submodules:
         node[kX*kY*kZ]: TbNode {
             addr = index;
+            @display("p=74,64");
         }
         timer: Timer {
-        }        
+            @display("p=227,175");
+        }
     connections:
         // (x,y,z) maps to x+y*kX+z*kX*kY
         for x=0..kX-1, for y=0..kY-1, for z=0..kZ-1 {

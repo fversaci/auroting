@@ -30,15 +30,9 @@
 
 #include "timer.h"
 
-Define_Module( Timer);
+Define_Module(Timer);
 
 void Timer::finish() {
 	recordScalar("#endTime", simTime());
 }
 
-
-timer::timer() {
-}
-
-timer::~timer() {
-}

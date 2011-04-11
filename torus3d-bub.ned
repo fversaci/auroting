@@ -34,8 +34,10 @@ network Torus3d_bub
     submodules:
         node[kX*kY*kZ]: BubNode {
             addr = index;
+            @display("p=74,64");
         }
         timer: Timer {
+            @display("p=227,175");
         }
     connections:
         // (x,y,z) maps to x+y*kX+z*kX*kY

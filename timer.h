@@ -33,18 +33,10 @@
 
 #include <omnetpp.h>
 
-/**
- * TODO - Generated class
- */
+/// Simple object to record simulation end time
 class Timer: public cSimpleModule {
 protected:
 	virtual void finish();
-};
-
-class timer {
-public:
-	timer();
-	virtual ~timer();
 };
 
 #endif
