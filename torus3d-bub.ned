@@ -35,6 +35,8 @@ network Torus3d_bub
         node[kX*kY*kZ]: BubNode {
             addr = index;
         }
+        timer: Timer {
+        }
     connections:
         // (x,y,z) maps to x+y*kX+z*kX*kY
         for x=0..kX-1, for y=0..kY-1, for z=0..kZ-1 {

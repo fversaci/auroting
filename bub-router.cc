@@ -120,7 +120,7 @@ void BRouter::initialize(){
 }
 
 void BRouter::finish(){
-  recordScalar("#received", numRcvd);
+  // recordScalar("#received", numRcvd);
 }
 
 void BRouter::updateDisplay()
