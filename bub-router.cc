@@ -214,8 +214,10 @@ bool BRouter::bubble(int q){
 
 void BRouter::sendACK(Pack *mess){
   cGate *orig=mess->getArrivalGate();
-  // if just injected do not send ACK
+  // if just injected send ACK to generator
   if (orig->getId()==gate("inject$i")->getId()){
+    Ack *ackpack=new Ack();
+    send(ackpack, gate("inject$o"));
     return;
   }
   // otherwise send ACK back

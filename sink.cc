@@ -14,8 +14,7 @@ protected:
 };
 
 // register module class with `\opp`
-Define_Module(Sink)
-;
+Define_Module(Sink);
 
 void Sink::handleMessage(cMessage *msg) {
 	delete msg; // just discard everything we receive
