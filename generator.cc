@@ -25,6 +25,8 @@ private:
   simtime_t delta;
   /// Reschedule timeout
   void resTO();
+  /// Packet length
+  int pl;
 protected:
   virtual void initialize();
   virtual void handleMessage(cMessage *msg);
@@ -55,6 +57,7 @@ void Generator::initialize() {
   nsize = getParentModule()->getVectorSize();
   count = par("count");
   delta = par("delta");
+  pl = par("packLen");
   tom = new TO("Send a new packet timeout");
   p = NULL;
   scheduleAt(simTime(),tom);
@@ -67,6 +70,7 @@ void Generator::sendPack(){
     int dest = intrand(nsize);
     string roba = "To " + IntToStr(dest);
     p = new Pack(roba.c_str());
+    p->setByteLength(pl);
     p->setDst(dest);
     p->setSrc(addr);
     p->setQueue(-1);

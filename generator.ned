@@ -21,6 +21,8 @@ simple Generator
     parameters:
         int count = default(10);
         double delta @unit(s) = default(1ms);
+        // Packet length
+        int packLen @unit(B) = default(1000B);        
         @display("i=block/source");
     gates:
         inout inject;

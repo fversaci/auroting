@@ -264,7 +264,7 @@ void BRouter::routePack(Pack* p){
   int ran=intrand(n);
   for(int d=0; d<n; ++d){
     int q=1+2*dirs[(ran+d)%n];
-    if (!full(q)){ // if one free queue is found insert the packet 
+    if (!full(q)){ // if one free adaptive queue is found insert the packet 
       enqueue(p,q);
       return;
     }
