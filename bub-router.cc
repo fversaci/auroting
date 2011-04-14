@@ -214,15 +214,14 @@ bool BRouter::bubble(int q){
 
 void BRouter::sendACK(Pack *mess){
   cGate *orig=mess->getArrivalGate();
+  Ack *ackpack=new Ack();
   // if just injected send ACK to generator
   if (orig->getId()==gate("inject$i")->getId()){
-    Ack *ackpack=new Ack();
     send(ackpack, gate("inject$o"));
     return;
   }
   // otherwise send ACK back
   int ind=orig->getIndex();
-  Ack *ackpack=new Ack();
   ackpack->setTID(mess->getTreeId());
   ackpack->setQueue(mess->getQueue());
   take(ackpack);
@@ -231,15 +230,14 @@ void BRouter::sendACK(Pack *mess){
 
 void BRouter::sendNAK(Pack *mess){
   cGate *orig=mess->getArrivalGate();
+  Nak *nakpack=new Nak();
   // if just injected send NAK to generator
   if (orig->getId()==gate("inject$i")->getId()){
-    Nak *nakpack=new Nak();
     send(nakpack, gate("inject$o"));
     return;
   }
   // otherwise send NAK back
   int ind=orig->getIndex();
-  Nak *nakpack=new Nak();
   nakpack->setTID(mess->getTreeId());
   nakpack->setQueue(mess->getQueue());
   take(nakpack);

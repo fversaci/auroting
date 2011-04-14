@@ -29,10 +29,20 @@
 // 
 
 #include "timer.h"
+#include <iostream>
+using namespace std;
 
 Define_Module(Timer);
 
 void Timer::finish() {
-	recordScalar("#endTime", simTime());
+  recordScalar("#endTime", simTime());
+  //recordScalar("#totalPacks", rcvdPacks);
 }
 
+void Timer::handleMessage(cMessage *msg) {
+  if (dynamic_cast<INC*>(msg) != NULL){
+    INC* m=(INC*) msg;
+    addRP(m->getCow());
+    delete msg;
+  }
+}

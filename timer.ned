@@ -21,4 +21,6 @@ package _3buf;
 simple Timer
 {
     @display("i=block/timer");
+    gates:
+        input addCow @directIn; // port to increment packet counter
 }

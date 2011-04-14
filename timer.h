@@ -32,11 +32,21 @@
 #define __AUROUTING_TIMER_H_
 
 #include <omnetpp.h>
+#include "pack_m.h"
 
 /// Simple object to record simulation end time
 class Timer: public cSimpleModule {
-protected:
-	virtual void finish();
+ private:
+  /// Number of total received packets
+  int rcvdPacks;
+  /// Add a number to received packets
+  void addRP(int n) { rcvdPacks+=n; }
+ public:
+  /// Constructor
+  Timer() : rcvdPacks(0) {}
+ protected:
+  virtual void finish();
+  virtual void handleMessage(cMessage *msg);
 };
 
 #endif

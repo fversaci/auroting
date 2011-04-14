@@ -23,6 +23,8 @@ private:
   static const int dim=3;
   /// central queues size
   unsigned int freeSpace[qn];
+  /// free space in neighbors' queues (e.g., nfs[4][1] = free space of B queue in neighbor node along z+)
+  int nfs[2*dim][qn];
   /// router node coordinates
   vector<int> coor;
   /// torus dimensions sizes
@@ -99,6 +101,10 @@ void TBRouter::initialize(){
   freeSpace[0] = par("AQueueSize");
   freeSpace[1] = par("BQueueSize");
   freeSpace[2] = par("CQueueSize");
+  for(int n=0; n<2*dim; ++n)
+    for(int i=0; i<qn; ++i)
+      nfs[n][i]=freeSpace[i];
+
   addr = getParentModule()->par("addr");
   kCoor.assign(3,0);
   kCoor[0] = getParentModule()->getParentModule()->par("kX");
@@ -107,6 +113,8 @@ void TBRouter::initialize(){
   coor = addr2coor(addr);
   tp = 0;
   numRcvd = 0;
+  tom = new TO("Timeout");
+
   WATCH(numRcvd);
   WATCH(coor[0]);
   WATCH(coor[1]);
@@ -121,7 +129,6 @@ void TBRouter::initialize(){
   WATCH_MAP(waiting[2]);
   WATCH_VECTOR(coda[2]);
   WATCH_MAP(nacks);
-  tom = new TO("Timeout");
 }
 
 void TBRouter::finish(){
@@ -229,17 +236,23 @@ void TBRouter::flushNACKs(){
 }
 
 bool TBRouter::routePack(Pack* pac){
-  // forward the packet, starting from a random admissible channel
-  vector<int> dirs=minimal(pac);
-  int n=dirs.size();
-  int ran=intrand(n);
-  for(int d=0; d<n; ++d){
-    int des=dirs[(ran+d)%n];
-    if (!gate("gate$o",des)->getTransmissionChannel()->isBusy()){
+  // forward the packet, along the free admissible channel the seems
+  // to have more free space
+  int q=pac->getQueue();
+  vector<int> mirs=minimal(pac);
+  int des=-1; int cap=-1;
+  for(int i=0; i<(int) mirs.size(); ++i){
+    int dir=mirs[i];
+    int nc=nfs[dir][q]; // estimated capacity along dir
+    if (!gate("gate$o", dir)->getTransmissionChannel()->isBusy() && nc>cap){
+      des=dir;
+      cap=nc;
+    }
+  }
+  if(des>=0){
       send(pac, "gate$o", des);
       ev << (pac->getTreeId()) <<  ": From " << addr << endl;
       return true;
-    }
   }
   delete pac;
   return false;
@@ -254,34 +267,36 @@ bool TBRouter::full(int q){
 
 void TBRouter::sendACK(Pack *mess){
   cGate *orig=mess->getArrivalGate();
+  Ack *ackpack=new Ack();
   // if just injected send ACK to generator
   if (orig->getId()==gate("inject$i")->getId()){
-    Ack *ackpack=new Ack();
     send(ackpack, gate("inject$o"));
     return;
   }
   // otherwise send ACK back
   int ind=orig->getIndex();
-  Ack *ackpack=new Ack();
   ackpack->setTID(mess->getTreeId());
   ackpack->setQueue(mess->getQueue());
+  for (int i=0; i<qn; ++i)
+    ackpack->setFs(i,freeSpace[i]);
   take(ackpack);
   nacks[ackpack]=ind;
 }
 
 void TBRouter::sendNAK(Pack *mess){
   cGate *orig=mess->getArrivalGate();
+  Nak *nakpack=new Nak();
   // if just injected send NAK to generator
   if (orig->getId()==gate("inject$i")->getId()){
-    Nak *nakpack=new Nak();
     send(nakpack, gate("inject$o"));
     return;
   }
   // otherwise send NAK back
   int ind=orig->getIndex();
-  Nak *nakpack=new Nak();
   nakpack->setTID(mess->getTreeId());
   nakpack->setQueue(mess->getQueue());
+  for (int i=0; i<qn; ++i)
+    nakpack->setFs(i,freeSpace[i]);
   take(nakpack);
   nacks[nakpack]=ind;
 }
@@ -395,6 +410,11 @@ void TBRouter::flushAll(){
 
 void TBRouter::handleACK(Ack *ap)
 {
+  // update free space statistics
+  int n=ap->getArrivalGate()->getIndex();
+  for(int i=0; i<qn; ++i)
+    nfs[n][i]=ap->getFs(i);
+  // handle the ACK
   ev << (ap->getTID()) <<  ": ACK at " << addr << endl;
   long tid = ap->getTID();
   int q=ap->getQueue();
@@ -408,6 +428,11 @@ void TBRouter::handleACK(Ack *ap)
 
 void TBRouter::handleNAK(Nak *ap)
 {
+  // update free space statistics
+  int n=ap->getArrivalGate()->getIndex();
+  for(int i=0; i<qn; ++i)
+    nfs[n][i]=ap->getFs(i);
+  // handle the NAK
   ev << (ap->getTID()) <<  ": NAK at " << addr << endl;
   long tid = ap->getTID();
   int q=ap->getQueue();

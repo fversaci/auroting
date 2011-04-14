@@ -30,6 +30,7 @@ packet Ack {
     long TID; // Packet TreeId
     int queue; // 0 = A, 1 = B, 2 = C, -1 = injection queue
     string displayString = "b=10,10,rect,green";
+    int fs[3]; // free space in central queues
     ByteLength = 10;    
 }
 
@@ -38,9 +39,15 @@ packet Nak {
     int TID; // Packet TreeId
     int queue; // 0 = A, 1 = B, 2 = C, -1 = injection queue
     string displayString = "b=10,10,rect,red";
+    int fs[3]; // free space in central queues
     ByteLength = 10;    
 }
 
 // Timeout message
 message TO {
+}
+
+// Increment counter message
+message INC {
+    int cow; // increment 
 }
