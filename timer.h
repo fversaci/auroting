@@ -39,8 +39,12 @@ class Timer: public cSimpleModule {
  private:
   /// Number of total received packets
   int rcvdPacks;
+  /// Number of total hops
+  int hops;
   /// Add a number to received packets
   void addRP(int n) { rcvdPacks+=n; }
+  /// Add a number to hops
+  void addHops(int n) { hops+=n; }
  public:
   /// Constructor
   Timer() : rcvdPacks(0) {}

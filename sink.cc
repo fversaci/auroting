@@ -18,9 +18,14 @@ protected:
 Define_Module(Sink);
 
 void Sink::handleMessage(cMessage *msg) {
-  delete msg; // discard the message
-  // notify the counter
-  // INC* mi=new INC();
-  // mi->setCow(1);
-  // sendDirect(mi, getParentModule()->getParentModule()->getSubmodule("timer"), "addCow");
+  if (dynamic_cast<Pack*>(msg) != NULL){
+    Pack* p=(Pack *) msg;
+    // notify the counter
+    NoM* nm=new NoM();
+    nm->setCow(1);
+    nm->setHops(p->getHops());
+    sendDirect(nm, getParentModule()->getParentModule()->getSubmodule("timer"), "addCow");
+  }
+  // discard the message
+  delete msg;
 }

@@ -36,13 +36,15 @@ Define_Module(Timer);
 
 void Timer::finish() {
   recordScalar("#endTime", simTime());
-  //recordScalar("#totalPacks", rcvdPacks);
+  recordScalar("#totalHops", hops);
+  recordScalar("#totalPacks", rcvdPacks);
 }
 
 void Timer::handleMessage(cMessage *msg) {
-  if (dynamic_cast<INC*>(msg) != NULL){
-    INC* m=(INC*) msg;
+  if (dynamic_cast<NoM*>(msg) != NULL){
+    NoM* m=(NoM*) msg;
     addRP(m->getCow());
+    addHops(m->getHops());
     delete msg;
   }
 }

@@ -18,8 +18,9 @@
 
 // Generic packet
 packet Pack {
-    int src;
-    int dst;
+    int src; // source
+    int dst; // destination
+    int hops; // hop count
     int queue; // 0 = A, 1 = B, 2 = C, -1 = injection queue
     string displayString = "b=10,10,oval,blue";
     ByteLength = 1000;
@@ -47,7 +48,8 @@ packet Nak {
 message TO {
 }
 
-// Increment counter message
-message INC {
-    int cow; // increment 
+// Notify message
+message NoM {
+    int cow; // counter increment
+    int hops; // hops increment 
 }

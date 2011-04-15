@@ -6,10 +6,8 @@
   </inputs>
   <datasets>
     <datasets name="roba">
-      <items xsi:type="scave:Add" filterPattern=""/>
-      <items xsi:type="scave:BarChart" name="">
-        <properties name="Y.Axis.Title" value="Average time"/>
-      </items>
+      <items xsi:type="scave:Add" filterPattern="name(#endTime)"/>
+      <items xsi:type="scave:BarChart" name="End Time"/>
     </datasets>
   </datasets>
   <chartSheets>

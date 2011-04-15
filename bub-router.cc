@@ -213,6 +213,7 @@ bool BRouter::bubble(int q){
 }
 
 void BRouter::sendACK(Pack *mess){
+  mess->setHops(mess->getHops()+1); // increment hop counter
   cGate *orig=mess->getArrivalGate();
   Ack *ackpack=new Ack();
   // if just injected send ACK to generator

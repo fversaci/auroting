@@ -74,6 +74,7 @@ void Generator::sendPack(){
     p->setDst(dest);
     p->setSrc(addr);
     p->setQueue(-1);
+    p->setHops(0);
   }
   send(p->dup(), "inject$o");
 }
