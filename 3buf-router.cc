@@ -51,6 +51,12 @@ private:
   inline void sendACK(Pack *mess);
   /// send (N)ACKS waiting in nacks
   void flushNACKs();
+  /// rearrange packets
+  bool rearrPacks();
+  /// forword packets
+  bool forwPacks();
+  /// forword packets (variant, preserves time order)
+  bool forwPacks2();
   /// send/rearrange packets
   void movePacks();
   /// Select the right queue for a packet
@@ -368,40 +374,81 @@ int TBRouter::sqPack(Pack* p){
   return 2; // smaller neighbors?
 }
 
-void TBRouter::movePacks(){
-  bool goon;
-  do {
-    goon=false;
-    for (int q=2; q>=0; --q){
-      // process non empty queues
-      if (!coda[q].empty()){
+bool TBRouter::rearrPacks(){
+  bool workdone=false;
+  for (int q=2; q>=0; --q){
+    // process non empty queues
+    if (!coda[q].empty()){
+      OrdPack op=coda[q].front();
+      Pack* pac=(Pack *) op.p;
+      // if not in the right queue try and move it
+      int d=sqPack(pac);
+      if (d!=q && !full(d)){
+	// pop from q and push into d
+	workdone = true;
 	OrdPack op=coda[q].front();
-	Pack* pac=(Pack *) op.p;
-	// if not in the right queue try and move it
-	int d=sqPack(pac);
-	if (d!=q && !full(d)){
-	  // pop from q and push into d
-	  goon = true;
-	  OrdPack op=coda[q].front();
-	  pop_heap(coda[q].begin(),coda[q].end());
-	  coda[q].pop_back();
-	  ++freeSpace[q];
-	  ((Pack*) op.p)->setQueue(d);
-	  coda[d].push_back(op);
-	  push_heap(coda[d].begin(),coda[d].end());
-	  --freeSpace[d];
-	}
-	// try and route packet. If successful, add it to waiting[q]
-	else if (d==q && routePack(pac->dup())){
-	  goon=true;
-	  pop_heap(coda[q].begin(),coda[q].end());
-	  coda[q].pop_back();
-	  waiting[q][pac->getTreeId()] = op;
-	}
+	pop_heap(coda[q].begin(),coda[q].end());
+	coda[q].pop_back();
+	++freeSpace[q];
+	((Pack*) op.p)->setQueue(d);
+	coda[d].push_back(op);
+	push_heap(coda[d].begin(),coda[d].end());
+	--freeSpace[d];
       }
     }
-  } while(goon);
+  }
+  return workdone;
 }
+
+bool TBRouter::forwPacks(){
+  bool workdone=false;
+  for (int q=2; q>=0; --q){
+    vector<OrdPack> newq;
+    sort_heap(coda[q].begin(),coda[q].end());
+    for(vector<OrdPack>::iterator it=coda[q].begin(); it!=coda[q].end(); ++it) {
+      OrdPack op=*it;
+      Pack* pac=(Pack *) op.p;
+      int d=sqPack(pac);
+      // if in the right queue try and route packet. If successful, add it to waiting[q]
+      if (d==q && routePack(pac->dup())){
+	workdone=true;
+	waiting[q][pac->getTreeId()] = op;
+      }
+      // else keep it in the same queue
+      else
+	newq.push_back(op);
+    }
+    // heapify and restore the queue
+    make_heap(newq.begin(), newq.end());
+    coda[q]=newq;
+  }
+  return workdone;
+}
+
+bool TBRouter::forwPacks2(){
+  bool workdone=false;
+  for (int q=2; q>=0; --q){
+    // process non empty queues
+    if (!coda[q].empty()){
+      OrdPack op=coda[q].front();
+      Pack* pac=(Pack *) op.p;
+      int d=sqPack(pac);
+      // if in the right queue try and route packet. If successful, add it to waiting[q]
+      if (d==q && routePack(pac->dup())){
+	workdone=true;
+	pop_heap(coda[q].begin(),coda[q].end());
+	coda[q].pop_back();
+	waiting[q][pac->getTreeId()] = op;
+      }
+    }
+  }
+  return workdone;
+}
+
+void TBRouter::movePacks(){
+  while (rearrPacks() || forwPacks());
+}
+
 
 void TBRouter::flushAll(){
   flushNACKs();
