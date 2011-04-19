@@ -6,7 +6,7 @@
   </inputs>
   <datasets>
     <datasets name="roba">
-      <items xsi:type="scave:Add" filterPattern="name(#endTime)"/>
+      <items xsi:type="scave:Add" filterPattern="name(#endTime) OR name(#LB1) OR name(#LB2) OR name(#LB3)"/>
       <items xsi:type="scave:BarChart" name="End Time"/>
     </datasets>
   </datasets>

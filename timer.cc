@@ -38,13 +38,33 @@ void Timer::finish() {
   recordScalar("#endTime", simTime());
   recordScalar("#totalHops", hops);
   recordScalar("#totalPacks", rcvdPacks);
+
+  cDatarateChannel* chan00 = (cDatarateChannel*) getParentModule()->getSubmodule("node",0)->gate("gate$o",0)->getChannel();
+  double B = chan00->getDatarate();
+  double lat = chan00->getDelay().dbl();
+  double L = 8.0 * getParentModule()->getSubmodule("node",0)->getSubmodule("generator")->par("packLen").doubleValue();
+  double T=lat + L/B; // latency of both packet and ACK
+  double x = getParentModule()->par("kX").doubleValue();
+  double y = getParentModule()->par("kY").doubleValue();
+  double z = getParentModule()->par("kZ").doubleValue();
+  double max=x>y?z:y;
+  max=max>z?max:z;
+  double lb1 = T*max/8.0; // bisection bandwidth lower bound
+  double lb2 = T*mh; // time for longest path
+  recordScalar("#LB1", lb1);
+  recordScalar("#LB2", lb2);
+  // cout << T << endl;
+  // cout << lb2 << " < " << simTime() << endl;
 }
 
 void Timer::handleMessage(cMessage *msg) {
   if (dynamic_cast<NoM*>(msg) != NULL){
     NoM* m=(NoM*) msg;
     addRP(m->getCow());
-    addHops(m->getHops());
+    int h=m->getHops()-1;
+    addHops(h);
+    if (h>mh)
+    	mh=h;
     delete msg;
   }
 }
