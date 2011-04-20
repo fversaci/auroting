@@ -43,12 +43,12 @@ void Timer::finish() {
   double B = chan00->getDatarate();
   double lat = chan00->getDelay().dbl();
   double L = 8.0 * getParentModule()->getSubmodule("node",0)->getSubmodule("generator")->par("packLen").doubleValue();
-  double count=getParentModule()->getSubmodule("node",0)->getSubmodule("generator")->par("count").doubleValue();
-  double T=lat + L/B; // latency of both packet and ACK
+  double count = getParentModule()->getSubmodule("node",0)->getSubmodule("generator")->par("count").doubleValue();
+  double T = lat + L/B; // latency of both packet and ACK
   double x = getParentModule()->par("kX").doubleValue();
   double y = getParentModule()->par("kY").doubleValue();
   double z = getParentModule()->par("kZ").doubleValue();
-  double max=x>y?z:y;
+  double max=x>y?x:y;
   max=max>z?max:z;
   double lb1 = count*T*max/8.0; // bisection bandwidth lower bound
   double lb2 = T*mh; // time for longest path

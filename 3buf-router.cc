@@ -58,7 +58,7 @@ private:
   /// forword packets (variant, preserves time order)
   bool forwPacks2();
   /// send/rearrange packets
-  void movePacks();
+  inline void movePacks();
   /// Select the right queue for a packet
   int sqPack(Pack* p);
   /// route a packet
@@ -446,7 +446,7 @@ bool TBRouter::forwPacks2(){
 }
 
 void TBRouter::movePacks(){
-  while (rearrPacks() || forwPacks());
+  while (rearrPacks() || forwPacks2());
 }
 
 
