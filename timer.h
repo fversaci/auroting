@@ -41,6 +41,8 @@ class Timer: public cSimpleModule {
   int rcvdPacks;
   /// Number of total hops
   int hops;
+  /// bisection bandwidth lowerbound
+  double lb;
   /// Add a number to received packets
   void addRP(int n) { rcvdPacks+=n; }
   /// Add a number to hops

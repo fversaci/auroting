@@ -16,9 +16,21 @@
         <properties name="Hist.Bar" value="Outline"/>
         <properties name="Hist.Data" value="Count"/>
       </items>
+      <items xsi:type="scave:Add" filterPattern="" type="VECTOR"/>
+      <items xsi:type="scave:Apply" operation="aggregator">
+        <params name="function" value="average"/>
+        <groupBy>iterationvars</groupBy>
+      </items>
+      <items xsi:type="scave:Apply" operation="slidingwinavg">
+        <params name="windowSize" value="100"/>
+      </items>
+      <items xsi:type="scave:LineChart" name="" lineNameFormat="">
+        <properties name="Legend.Display" value="true"/>
+        <properties name="Line.Type" value="Points"/>
+      </items>
     </datasets>
   </datasets>
   <chartSheets>
-    <chartSheets name="default" charts="//@datasets/@datasets.0/@items.1 //@datasets/@datasets.0/@items.3"/>
+    <chartSheets name="default" charts="//@datasets/@datasets.0/@items.1 //@datasets/@datasets.0/@items.3 //@datasets/@datasets.0/@items.7"/>
   </chartSheets>
 </scave:Analysis>

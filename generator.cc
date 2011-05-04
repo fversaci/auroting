@@ -13,20 +13,26 @@ using namespace std;
 /// Packet generator
 class Generator: public cSimpleModule {
 private:
-  /// Send a packet (generate one if needed)
+  /// Send a packet (if available)
   void sendPack();
+  /// Generate a packet
+  void genPack();
   /// Timeout message for sending next message
   TO* tom;
-  /// Packet to send
-  Pack* p;
+  /// Timeout message for generating new message
+  TO2* tog;
   /// Packets count-down
   int count;
-  /// Delta time between packets
-  simtime_t delta;
+  /// Delta time between packets generation
+  simtime_t deltaG;
+  /// Delta time between packets transmission
+  simtime_t deltaS;
   /// Reschedule timeout
   void resTO();
   /// Packet length
   int pl;
+  /// queue of packets to be sent
+  cQueue togo;
 protected:
   virtual void initialize();
   virtual void handleMessage(cMessage *msg);
@@ -42,6 +48,7 @@ Define_Module(Generator);
 
 Generator::~Generator(){
   delete tom;
+  delete tog;
 }
 
 
@@ -51,45 +58,51 @@ string IntToStr(int n) {
   return result.str();
 }
 
-
 void Generator::initialize() {
   addr = getParentModule()->par("addr");
   nsize = getParentModule()->getVectorSize();
   count = par("count");
-  delta = par("delta");
+  deltaG = par("deltaG");
+  deltaS = par("deltaS");
   pl = par("packLen");
   tom = new TO("Send a new packet timeout");
-  p = NULL;
+  tog = new TO2("Generate a new packet timeout");
+  scheduleAt(simTime(),tog);
   scheduleAt(simTime(),tom);
   WATCH(count);
 }
 
-
-void Generator::sendPack(){
-  if (p == NULL){
+void Generator::genPack(){
     int dest = intrand(nsize);
     string roba = "To " + IntToStr(dest);
-    p = new Pack(roba.c_str());
+    Pack *p = new Pack(roba.c_str());
     p->setByteLength(pl);
     p->setDst(dest);
     p->setSrc(addr);
     p->setQueue(-1);
     p->setHops(0);
     p->setBirthtime(simTime());
-  }
-  send(p->dup(), "inject$o");
+    togo.insert(p);
+	// schedule next packet generation
+	if (count>0)
+		scheduleAt(simTime()+deltaG,tog);
 }
 
+void Generator::sendPack(){
+	if (!togo.empty()){
+		Pack *p=(Pack*) togo.front();
+		send(p->dup(), "inject$o");
+	}
+}
 
 void Generator::resTO(){
   // cancel old timeout
   if (tom->isScheduled())
     cancelEvent(tom);
-  // schedule next packet
-  if ((count)>0)
-    scheduleAt(simTime()+delta,tom);
+	// schedule next packet transmission
+	if (count>0 || !togo.empty())
+		scheduleAt(simTime()+deltaS,tom);
 }
-
 
 void Generator::handleMessage(cMessage *msg){
   // if NAK, add another message to count
@@ -101,15 +114,20 @@ void Generator::handleMessage(cMessage *msg){
   }
   // if ACK, delete stored message
   if (dynamic_cast<Ack*>(msg) != NULL){
-    delete p;
-    p = NULL;
-    delete msg;
-    resTO();
+	  Pack *p = (Pack *) togo.pop();
+	  delete p;
+	  delete msg;
+	  resTO();
+	  return;
+  }
+  // if timeout 2, generate a message
+  if (dynamic_cast<TO2*>(msg) != NULL){
+    genPack();
+    --count;
     return;
   }
   // if timeout, send a message
   if (dynamic_cast<TO*>(msg) != NULL){
     sendPack();
-    --count;
   }
 }

@@ -36,18 +36,20 @@ Define_Module(Timer);
 
 void Timer::initialize(){
 	cDatarateChannel* chan00 = (cDatarateChannel*) getParentModule()->getSubmodule("node",0)->gate("gate$o",0)->getChannel();
-	B = chan00->getDatarate();
+	B = chan00->getDatarate(); // b/s
 	lat = chan00->getDelay().dbl();
 	L = 8.0 * getParentModule()->getSubmodule("node",0)->getSubmodule("generator")->par("packLen").doubleValue();
 	count = getParentModule()->getSubmodule("node",0)->getSubmodule("generator")->par("count").doubleValue();
-	T = lat + L/B; // latency of both packet and ACK
+	T = L/B; // no latency
 	x = getParentModule()->par("kX").doubleValue();
 	y = getParentModule()->par("kY").doubleValue();
 	z = getParentModule()->par("kZ").doubleValue();
 	max=x>y?x:y;
 	max=max>z?max:z;
-
+	lb = count*T*max/8.0; // bisection bandwidth time lower bound
 	lifetimes.setName("Lifetimes");
+	lifetimes_hist.setNumCells(100);
+	lifetimes_hist.setRange(0,lb);
 }
 
 void Timer::finish() {
@@ -55,7 +57,6 @@ void Timer::finish() {
   recordScalar("#totalHops", hops);
   recordScalar("#totalPacks", rcvdPacks);
 
-  double lb = count*T*max/8.0; // bisection bandwidth lower bound
   recordScalar("#LB", lb);
   recordScalar("#ratio", lb/simTime().dbl());
   lifetimes_hist.recordAs("Life Times");

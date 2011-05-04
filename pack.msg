@@ -49,6 +49,10 @@ packet Nak {
 message TO {
 }
 
+// Timeout message 2
+message TO2 {
+}
+
 // Notify message
 message NoM {
     int cow; // counter increment
