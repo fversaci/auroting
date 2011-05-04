@@ -6,11 +6,19 @@
   </inputs>
   <datasets>
     <datasets name="roba">
-      <items xsi:type="scave:Add" filterPattern="name(#endTime) OR name(#LB1) OR name(#LB2) OR name(#LB3)"/>
-      <items xsi:type="scave:BarChart" name="End Time"/>
+      <items xsi:type="scave:Add" filterPattern="name(#ratio)"/>
+      <items xsi:type="scave:BarChart" name="End Time with Lower Bound">
+        <properties name="Bar.Placement" value="Overlap"/>
+        <groupByFields>measurement</groupByFields>
+      </items>
+      <items xsi:type="scave:Add" filterPattern="" type="HISTOGRAM"/>
+      <items xsi:type="scave:HistogramChart" name="Life times">
+        <properties name="Hist.Bar" value="Outline"/>
+        <properties name="Hist.Data" value="Count"/>
+      </items>
     </datasets>
   </datasets>
   <chartSheets>
-    <chartSheets name="default" charts="//@datasets/@datasets.0/@items.1"/>
+    <chartSheets name="default" charts="//@datasets/@datasets.0/@items.1 //@datasets/@datasets.0/@items.3"/>
   </chartSheets>
 </scave:Analysis>

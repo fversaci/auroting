@@ -21,6 +21,7 @@ packet Pack {
     int src; // source
     int dst; // destination
     int hops; // hop count
+    simtime_t birthtime; // birth time
     int queue; // 0 = A, 1 = B, 2 = C, -1 = injection queue
     string displayString = "b=10,10,oval,blue";
     ByteLength = 1000;
@@ -52,4 +53,5 @@ message TO {
 message NoM {
     int cow; // counter increment
     int hops; // hops increment 
+    simtime_t birthtime; // birth time
 }

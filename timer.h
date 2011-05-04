@@ -41,17 +41,21 @@ class Timer: public cSimpleModule {
   int rcvdPacks;
   /// Number of total hops
   int hops;
-  /// maximum number of hops
-  int mh;
   /// Add a number to received packets
   void addRP(int n) { rcvdPacks+=n; }
   /// Add a number to hops
   void addHops(int n) { hops+=n; }
+  /// packets lifetime
+  cOutVector lifetimes;
+  cDoubleHistogram lifetimes_hist;
+  /// Varia
+  double B,lat,L,count,T,x,y,z,max;
  public:
   /// Constructor
-  Timer() : rcvdPacks(0), mh(0) {}
+  Timer() : rcvdPacks(0) {}
  protected:
   virtual void finish();
+  virtual void initialize();
   virtual void handleMessage(cMessage *msg);
 };
 

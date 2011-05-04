@@ -34,28 +34,31 @@ using namespace std;
 
 Define_Module(Timer);
 
+void Timer::initialize(){
+	cDatarateChannel* chan00 = (cDatarateChannel*) getParentModule()->getSubmodule("node",0)->gate("gate$o",0)->getChannel();
+	B = chan00->getDatarate();
+	lat = chan00->getDelay().dbl();
+	L = 8.0 * getParentModule()->getSubmodule("node",0)->getSubmodule("generator")->par("packLen").doubleValue();
+	count = getParentModule()->getSubmodule("node",0)->getSubmodule("generator")->par("count").doubleValue();
+	T = lat + L/B; // latency of both packet and ACK
+	x = getParentModule()->par("kX").doubleValue();
+	y = getParentModule()->par("kY").doubleValue();
+	z = getParentModule()->par("kZ").doubleValue();
+	max=x>y?x:y;
+	max=max>z?max:z;
+
+	lifetimes.setName("Lifetimes");
+}
+
 void Timer::finish() {
   recordScalar("#endTime", simTime());
   recordScalar("#totalHops", hops);
   recordScalar("#totalPacks", rcvdPacks);
 
-  cDatarateChannel* chan00 = (cDatarateChannel*) getParentModule()->getSubmodule("node",0)->gate("gate$o",0)->getChannel();
-  double B = chan00->getDatarate();
-  double lat = chan00->getDelay().dbl();
-  double L = 8.0 * getParentModule()->getSubmodule("node",0)->getSubmodule("generator")->par("packLen").doubleValue();
-  double count = getParentModule()->getSubmodule("node",0)->getSubmodule("generator")->par("count").doubleValue();
-  double T = lat + L/B; // latency of both packet and ACK
-  double x = getParentModule()->par("kX").doubleValue();
-  double y = getParentModule()->par("kY").doubleValue();
-  double z = getParentModule()->par("kZ").doubleValue();
-  double max=x>y?x:y;
-  max=max>z?max:z;
-  double lb1 = count*T*max/8.0; // bisection bandwidth lower bound
-  double lb2 = T*mh; // time for longest path
-  recordScalar("#LB1", lb1);
-  recordScalar("#LB2", lb2);
-  // cout << T << endl;
-  // cout << lb2 << " < " << simTime() << endl;
+  double lb = count*T*max/8.0; // bisection bandwidth lower bound
+  recordScalar("#LB", lb);
+  recordScalar("#ratio", lb/simTime().dbl());
+  lifetimes_hist.recordAs("Life Times");
 }
 
 void Timer::handleMessage(cMessage *msg) {
@@ -64,8 +67,8 @@ void Timer::handleMessage(cMessage *msg) {
     addRP(m->getCow());
     int h=m->getHops()-1;
     addHops(h);
-    if (h>mh)
-    	mh=h;
+    lifetimes.record(simTime()-m->getBirthtime());
+    lifetimes_hist.collect(simTime()-m->getBirthtime());
     delete msg;
   }
 }

@@ -75,6 +75,7 @@ void Generator::sendPack(){
     p->setSrc(addr);
     p->setQueue(-1);
     p->setHops(0);
+    p->setBirthtime(simTime());
   }
   send(p->dup(), "inject$o");
 }
