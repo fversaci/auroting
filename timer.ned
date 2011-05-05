@@ -19,7 +19,10 @@ package _3buf;
 // Simple module to record simulation end time
 //
 simple Timer
-{
+{    
+    parameters:
+        // histogram range (in bisection bandwidth lower bound units)
+        double histrange = default(2.0);    
     @display("i=block/timer");
     gates:
         input addCow @directIn; // port to increment packet counter

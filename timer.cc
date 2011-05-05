@@ -49,7 +49,8 @@ void Timer::initialize(){
 	lb = count*T*max/8.0; // bisection bandwidth time lower bound
 	lifetimes.setName("Lifetimes");
 	lifetimes_hist.setNumCells(100);
-	lifetimes_hist.setRange(0,lb);
+	double hr=par("histrange");
+	lifetimes_hist.setRange(0,hr*lb);
 }
 
 void Timer::finish() {

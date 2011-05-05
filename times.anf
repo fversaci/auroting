@@ -21,8 +21,8 @@
         <params name="function" value="average"/>
         <groupBy>iterationvars</groupBy>
       </items>
-      <items xsi:type="scave:Apply" operation="slidingwinavg">
-        <params name="windowSize" value="100"/>
+      <items xsi:type="scave:Apply" operation="winavg">
+        <params name="windowSize" value="20"/>
       </items>
       <items xsi:type="scave:LineChart" name="" lineNameFormat="">
         <properties name="Legend.Display" value="true"/>
