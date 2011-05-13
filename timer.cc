@@ -48,9 +48,13 @@ void Timer::initialize(){
 	max=max>z?max:z;
 	lb = count*T*max/8.0; // bisection bandwidth time lower bound
 	lifetimes.setName("Lifetimes");
-	lifetimes_hist.setNumCells(100);
+	lifetimes_hist.setNumCells(500);
+	hoptimes_hist.setNumCells(500);
 	double hr=par("histrange");
-	lifetimes_hist.setRange(0,hr*lb);
+	// lifetimes_hist.setRange(0,hr*lb);
+	lifetimes_hist.setRange(0,hr);
+	hoptimes_hist.setRange(0,hr*4.0/((double)(x+y+z)));
+	// lifetimes_hist.setRange(0,hr*lb*sqrt(count)/32);
 }
 
 void Timer::finish() {
@@ -60,6 +64,7 @@ void Timer::finish() {
 
   recordScalar("#LB", lb);
   recordScalar("#ratio", lb/simTime().dbl());
+  hoptimes_hist.recordAs("Hop Times");
   lifetimes_hist.recordAs("Life Times");
 }
 
@@ -69,8 +74,13 @@ void Timer::handleMessage(cMessage *msg) {
     addRP(m->getCow());
     int h=m->getHops()-1;
     addHops(h);
-    lifetimes.record(simTime()-m->getBirthtime());
-    lifetimes_hist.collect(simTime()-m->getBirthtime());
+    SimTime tt=simTime()-m->getBirthtime();
+    lifetimes.record(tt);
+    lifetimes_hist.collect(tt);
+    if (h>0){
+    	double gam=1/((double) h);
+    	hoptimes_hist.collect(tt*gam);
+    }
     delete msg;
   }
 }

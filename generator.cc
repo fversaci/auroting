@@ -59,11 +59,22 @@ string IntToStr(int n) {
 }
 
 void Generator::initialize() {
+	cDatarateChannel* chan00 = (cDatarateChannel*) getParentModule()->gate("gate$o",0)->getChannel();
+	double B = chan00->getDatarate(); // b/s
+	double L = 8.0 * par("packLen").doubleValue();
+	double x = getParentModule()->getParentModule()->par("kX").doubleValue();
+	double y = getParentModule()->getParentModule()->par("kY").doubleValue();
+	double z = getParentModule()->getParentModule()->par("kZ").doubleValue();
+	double max=x>y?x:y;
+	max=max>z?max:z;
+    // surely saturate for delta <= (max/8)*(PackLen/datarate)
+	SimTime delta=max*.125*L/B;
+
 	addr = getParentModule()->par("addr");
 	nsize = getParentModule()->getVectorSize();
 	count = par("count");
-	deltaG = par("deltaG");
-	deltaS = par("deltaS");
+	deltaG = delta / par("deltaG");
+	deltaS = delta / par("deltaS");
 	pl = par("packLen");
 	tom = new TO("Send a new packet timeout");
 	tog = new TO2("Generate a new packet timeout");
@@ -96,7 +107,7 @@ void Generator::sendPack(){
 		wacks = true;
 	}
 	// schedule next packet transmission
-	if (count>0 || !togo.empty()) // stop rescheduling when cout==0 and togo is empty
+	if (count>0 || !togo.empty()) // stop rescheduling when count==0 and togo is empty
 		scheduleAt(simTime()+deltaS,tom);
 }
 

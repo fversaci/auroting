@@ -6,31 +6,43 @@
   </inputs>
   <datasets>
     <datasets name="roba">
-      <items xsi:type="scave:Add" filterPattern="name(#ratio)"/>
-      <items xsi:type="scave:BarChart" name="End Time with Lower Bound">
-        <properties name="Bar.Placement" value="Overlap"/>
-        <groupByFields>measurement</groupByFields>
+      <items xsi:type="scave:Group" name="boh">
+        <items xsi:type="scave:Add" filterPattern="name(#ratio)"/>
+        <items xsi:type="scave:BarChart" name="End Time with Lower Bound">
+          <properties name="Bar.Placement" value="Overlap"/>
+          <groupByFields>measurement</groupByFields>
+        </items>
       </items>
-      <items xsi:type="scave:Add" filterPattern="" type="HISTOGRAM"/>
-      <items xsi:type="scave:HistogramChart" name="Life times">
-        <properties name="Hist.Bar" value="Outline"/>
-        <properties name="Hist.Data" value="Count"/>
+      <items xsi:type="scave:Group" name="boh">
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times&quot;" type="HISTOGRAM"/>
+        <items xsi:type="scave:HistogramChart" name="Life times">
+          <properties name="Legend.Display" value="true"/>
+          <properties name="Hist.Bar" value="Outline"/>
+          <properties name="Hist.Data" value="Pdf"/>
+        </items>
       </items>
-      <items xsi:type="scave:Add" filterPattern="" type="VECTOR"/>
-      <items xsi:type="scave:Apply" operation="aggregator">
-        <params name="function" value="average"/>
-        <groupBy>iterationvars</groupBy>
+      <items xsi:type="scave:Group" name="boh">
+        <items xsi:type="scave:Add" filterPattern="" type="VECTOR"/>
+        <items xsi:type="scave:Apply" operation="aggregator">
+          <params name="function" value="average"/>
+          <groupBy>iterationvars</groupBy>
+        </items>
+        <items xsi:type="scave:LineChart" name="Life times during execution" lineNameFormat="">
+          <properties name="Legend.Display" value="true"/>
+          <properties name="Line.Type" value="Points"/>
+        </items>
       </items>
-      <items xsi:type="scave:Apply" operation="winavg">
-        <params name="windowSize" value="20"/>
-      </items>
-      <items xsi:type="scave:LineChart" name="" lineNameFormat="">
-        <properties name="Legend.Display" value="true"/>
-        <properties name="Line.Type" value="Points"/>
+      <items xsi:type="scave:Group" name="boh">
+        <items xsi:type="scave:Add" filterPattern="&quot;Hop Times&quot;" type="HISTOGRAM"/>
+        <items xsi:type="scave:HistogramChart" name="Time for hop">
+          <properties name="Legend.Display" value="true"/>
+          <properties name="Hist.Bar" value="Outline"/>
+          <properties name="Hist.Data" value="Pdf"/>
+        </items>
       </items>
     </datasets>
   </datasets>
   <chartSheets>
-    <chartSheets name="default" charts="//@datasets/@datasets.0/@items.1 //@datasets/@datasets.0/@items.3 //@datasets/@datasets.0/@items.7"/>
+    <chartSheets name="default" charts="//@datasets/@datasets.0/@items.0/@items.1 //@datasets/@datasets.0/@items.1/@items.1 //@datasets/@datasets.0/@items.2/@items.2 //@datasets/@datasets.0/@items.3/@items.1"/>
   </chartSheets>
 </scave:Analysis>

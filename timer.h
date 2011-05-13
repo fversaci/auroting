@@ -41,7 +41,7 @@ class Timer: public cSimpleModule {
   int rcvdPacks;
   /// Number of total hops
   int hops;
-  /// bisection bandwidth lowerbound
+  /// bisection bandwidth lower bound
   double lb;
   /// Add a number to received packets
   void addRP(int n) { rcvdPacks+=n; }
@@ -49,6 +49,7 @@ class Timer: public cSimpleModule {
   void addHops(int n) { hops+=n; }
   /// packets lifetime
   cOutVector lifetimes;
+  cDoubleHistogram hoptimes_hist;
   cDoubleHistogram lifetimes_hist;
   /// Varia
   double B,lat,L,count,T,x,y,z,max;

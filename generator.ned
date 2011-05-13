@@ -20,10 +20,10 @@ simple Generator
 {
     parameters:
         int count = default(10);
-        // delta to generate a new packet
-        double deltaG @unit(s) = default(0.5ms);
-        // delta to send a new packet
-        double deltaS @unit(s) = default(1ms);
+        // delta to generate a new packet (in saturation units)
+        double deltaG = default(1);
+        // delta to send a new packet (in saturation units)
+        double deltaS = default(1);
         // Packet length
         int packLen @unit(B) = default(2 KB);        
         @display("i=block/source");
