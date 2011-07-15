@@ -21,6 +21,7 @@ simple BRouter
     parameters:
         int EscQueueSize; // size of escape (bubble) queues
         int AdapQueueSize; // size of adaptive queues
+        int InOutQueueSize; // size of queues to and from the CPU
     @display("i=block/routing");
     gates:
         inout inject;

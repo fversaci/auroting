@@ -27,7 +27,7 @@ packet Pack {
     ByteLength = 1000;
 }
 
-// ACK message
+// ACK packet
 packet Ack {
     long TID; // Packet TreeId
     int queue; // 0 = A, 1 = B, 2 = C, -1 = injection queue
@@ -36,7 +36,7 @@ packet Ack {
     ByteLength = 10;    
 }
 
-// NAK message
+// NAK packet
 packet Nak {
     int TID; // Packet TreeId
     int queue; // 0 = A, 1 = B, 2 = C, -1 = injection queue

@@ -24,8 +24,16 @@ module BubNode
     parameters:
         @display("b=15,15,oval,yellow");
         int addr = default(0);
+        double band @unit(bps) = default(4 Gbps); // bandwodth
+        double lat @unit(s) = default(240 ns); // latency
     gates:
         inout gate[6];
+    types:
+        channel InternalChan extends ned.DatarateChannel
+        {
+            datarate = band;
+            delay = lat;
+        }
     submodules:
         generator: Generator {
             @display("p=60,56");
@@ -37,8 +45,8 @@ module BubNode
             @display("p=179,56");
         }
     connections:
-        router.consume --> IdealChannel --> sink.consume;
-        generator.inject <--> IdealChannel <--> router.inject;
+        router.consume --> InternalChan --> sink.consume;
+        generator.inject <--> InternalChan <--> router.inject;
         for i=0..5 {
             router.gate[i] <--> IdealChannel <--> gate[i];
         }

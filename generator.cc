@@ -29,6 +29,8 @@ private:
 	simtime_t deltaS;
 	/// Packet length
 	int pl;
+	/// Packets number per burst
+	int pn;
 	/// queue of packets to be sent
 	cQueue togo;
 	/// waiting for (N)ACKS?
@@ -61,7 +63,7 @@ string IntToStr(int n) {
 void Generator::initialize() {
 	cDatarateChannel* chan00 = (cDatarateChannel*) getParentModule()->gate("gate$o",0)->getChannel();
 	double B = chan00->getDatarate(); // b/s
-	double L = 8.0 * par("packLen").doubleValue();
+	double L = 8.0 * par("packLen").doubleValue() * par("packNum").doubleValue();
 	double x = getParentModule()->getParentModule()->par("kX").doubleValue();
 	double y = getParentModule()->getParentModule()->par("kY").doubleValue();
 	double z = getParentModule()->getParentModule()->par("kZ").doubleValue();
@@ -73,9 +75,10 @@ void Generator::initialize() {
 	addr = getParentModule()->par("addr");
 	nsize = getParentModule()->getVectorSize();
 	count = par("count");
-	deltaG = delta / par("deltaG");
-	deltaS = delta / par("deltaS");
 	pl = par("packLen");
+	pn = par("packNum");
+	deltaG = delta / par("deltaG");
+	deltaS = delta / (pn*((double) par("deltaS")));
 	tom = new TO("Send a new packet timeout");
 	tog = new TO2("Generate a new packet timeout");
 	scheduleAt(simTime(),tog);
@@ -87,14 +90,16 @@ void Generator::initialize() {
 void Generator::genPack(){
 	int dest = intrand(nsize);
 	string roba = "To " + IntToStr(dest);
-	Pack *p = new Pack(roba.c_str());
-	p->setByteLength(pl);
-	p->setDst(dest);
-	p->setSrc(addr);
-	p->setQueue(-1);
-	p->setHops(0);
-	p->setBirthtime(simTime());
-	togo.insert(p);
+	for (int i=0; i<pn; ++i){
+		Pack *p = new Pack(roba.c_str());
+		p->setByteLength(pl);
+		p->setDst(dest);
+		p->setSrc(addr);
+		p->setQueue(-1);
+		p->setHops(0);
+		p->setBirthtime(simTime());
+		togo.insert(p);
+	}
 	// schedule next packet generation
 	if (--count>0)
 		scheduleAt(simTime()+exponential(deltaG),tog);

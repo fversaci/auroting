@@ -26,10 +26,14 @@ network Torus3d_bub
         int kX = default(2);
         int kY = default(2);
         int kZ = default(2);
+        double band @unit(bps) = default (1 Gbps); // bandwidth
+        double lat @unit(s) = default (250 ns); // latency
         @display("i=block/network2");
     types:
         channel Chan extends ned.DatarateChannel
         {
+            datarate = band;
+            delay = lat;
         }
     submodules:
         node[kX*kY*kZ]: BubNode {

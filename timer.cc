@@ -40,6 +40,7 @@ void Timer::initialize(){
 	lat = chan00->getDelay().dbl();
 	L = 8.0 * getParentModule()->getSubmodule("node",0)->getSubmodule("generator")->par("packLen").doubleValue();
 	count = getParentModule()->getSubmodule("node",0)->getSubmodule("generator")->par("count").doubleValue();
+	count *= getParentModule()->getSubmodule("node",0)->getSubmodule("generator")->par("packNum").doubleValue();
 	T = L/B; // no latency
 	x = getParentModule()->par("kX").doubleValue();
 	y = getParentModule()->par("kY").doubleValue();
@@ -50,10 +51,10 @@ void Timer::initialize(){
 	lifetimes.setName("Lifetimes");
 	lifetimes_hist.setNumCells(500);
 	hoptimes_hist.setNumCells(500);
-	double hr=par("histrange");
+	double hr=(T+lat)*((double) par("histrange"));
 	// lifetimes_hist.setRange(0,hr*lb);
-	lifetimes_hist.setRange(0,hr);
-	hoptimes_hist.setRange(0,hr*4.0/((double)(x+y+z)));
+	lifetimes_hist.setRange(0, .25*(x+y+z)*hr);
+	hoptimes_hist.setRange(0, hr);
 	// lifetimes_hist.setRange(0,hr*lb*sqrt(count)/32);
 }
 

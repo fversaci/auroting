@@ -26,6 +26,8 @@ simple Generator
         double deltaS = default(1);
         // Packet length
         int packLen @unit(B) = default(2 KB);        
+        // number of packet to be produced per burst
+        int packNum = default(10);        
         @display("i=block/source");
     gates:
         inout inject;
