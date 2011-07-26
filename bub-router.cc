@@ -119,6 +119,7 @@ void BRouter::initialize(){
 	WATCH(coor[0]);
 	WATCH(coor[1]);
 	WATCH(coor[2]);
+	conq.setName("conq");
 	for (int i=0; i<qn; ++i){
 		createWatch("freeSpace",freeSpace[i]);
 		createStdMapWatcher("waiting",waiting[i]);
@@ -219,14 +220,16 @@ void BRouter::flushNACKs(){
 
 bool BRouter::full(int q){
 	// queues have finite capacity
-	if (coda[q].size() < freeSpace[q])
+	//OLD: if (coda[q].size() < freeSpace[q])
+	if (freeSpace[q]>0)
 		return false;
 	return true;
 }
 
 bool BRouter::bubble(int q){
-	// true if q has two free slots
-	if (coda[q].size() < freeSpace[q]-1)
+	// true if q has at least two free slots
+	//OLD: if (coda[q].size() < freeSpace[q]-1)
+	if (freeSpace[q]>1)
 		return true;
 	return false;
 }

@@ -47,6 +47,10 @@ private:
 	vector<int> kCoor;
 	/// number of dimensions of the torus
 	static const int dim=3;
+	/// log_2(nsize), for FFT pattern
+	int l2;
+	/// current butterfly dimension
+	int bdim;
 protected:
 	virtual void initialize();
 	virtual void handleMessage(cMessage *msg);
@@ -91,7 +95,13 @@ void Generator::initialize() {
 
 	addr = getParentModule()->par("addr");
 	nsize = getParentModule()->getVectorSize();
+
+	bdim=0; l2=0;
+	if ((nsize & (nsize - 1))==0) // if power of 2 compute logarithm
+		for (int ns=nsize; ns!=1; ns/=2, ++l2) ; // l2=log_2(nsize)
+
 	count = par("count");
+	togo.setName("ToGo queue");
 	pl = par("packLen");
 	pn = par("packNum");
 	commPatt = par("commPatt");
@@ -138,7 +148,7 @@ vector<int> Generator::chooseDsts(){
 		r.push_back(intrand(nsize));
 		return r;
 	}
-	// first neighbors
+	// first neighbors (6 nodes in 3 dim)
 	if (commPatt==1){
 		for (int d=0; d<dim; ++d){
 			vector<int> me=addr2coor(addr);
@@ -149,6 +159,54 @@ vector<int> Generator::chooseDsts(){
 		}
 		return r;
 	}
+	// nodes at distance <= 2 (24 nodes in 3 dim)
+	if (commPatt==2){
+		// points along the axes -- num=(4*dim)
+		for (int d=0; d<dim; ++d){
+			vector<int> me=addr2coor(addr);
+			me[d]=(me[d]+1+kCoor[d])%kCoor[d];
+			r.push_back(coor2addr(me));
+			me[d]=(me[d]+1+kCoor[d])%kCoor[d];
+			r.push_back(coor2addr(me));
+			me[d]=(me[d]-3+kCoor[d])%kCoor[d];
+			r.push_back(coor2addr(me));
+			me[d]=(me[d]-1+kCoor[d])%kCoor[d];
+			r.push_back(coor2addr(me));
+		}
+		// points reached by going along two different dimensions d1 and d2 -- num=(4*dim)
+		for (int d1=0; d1<dim; ++d1){
+			for (int d2=d1+1; d2<dim; ++d2){
+				// (1,1)
+				vector<int> me=addr2coor(addr);
+				me[d1]=(me[d1]+1+kCoor[d1])%kCoor[d1];
+				me[d2]=(me[d2]+1+kCoor[d2])%kCoor[d2];
+				r.push_back(coor2addr(me));
+				// (-1,1)
+				me[d1]=(me[d1]-2+kCoor[d1])%kCoor[d1];
+				r.push_back(coor2addr(me));
+				// (-1,-1)
+				me[d2]=(me[d2]-2+kCoor[d2])%kCoor[d2];
+				r.push_back(coor2addr(me));
+				// (1,-1)
+				me[d1]=(me[d1]+2+kCoor[d1])%kCoor[d1];
+				r.push_back(coor2addr(me));
+			}
+		}
+		return r;
+	}
+	// butterfly
+	if (commPatt==10){
+		if ((nsize & (nsize - 1))!=0) // not power of two (assuming nsize>0)
+			throw cRuntimeError("Number of nodes must be a power of two for butterfly testing");
+		// for (int bdim=0; bdim<l2; ++bdim){
+		int tog=(1<<bdim); // 2^d
+		bdim=(bdim+1)%l2;
+		int des=addr;
+		des ^= tog;
+		r.push_back(des);
+		// }
+		return r;
+	}
 
 	// non-recognized pattern
 	throw cRuntimeError("Non recognized communication pattern: %d", commPatt);
@@ -157,7 +215,7 @@ vector<int> Generator::chooseDsts(){
 void Generator::genPack(){
 	vector<int> dsts = chooseDsts();
 	if (pn % dsts.size()!=0)
-		throw cRuntimeError("Choose a number of packets divisible by the desired destinations ()", dsts.size());
+		throw cRuntimeError("Choose a number of packets divisible by the desired destinations (%d)", dsts.size());
 	int neach=pn/dsts.size();
 	for(int i=0; i<(int) dsts.size(); ++i){
 		int dest=dsts[i];

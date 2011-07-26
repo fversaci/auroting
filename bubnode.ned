@@ -24,7 +24,7 @@ module BubNode
     parameters:
         @display("b=15,15,oval,yellow");
         int addr = default(0);
-        double band @unit(bps) = default(4 Gbps); // bandwodth
+        double band @unit(bps) = default(4 Gbps); // bandwidth
         double lat @unit(s) = default(240 ns); // latency
     gates:
         inout gate[6];
