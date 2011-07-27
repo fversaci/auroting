@@ -51,6 +51,10 @@ private:
 	int l2;
 	/// current butterfly dimension
 	int bdim;
+	/// random distribution for packet generation given some average value
+	inline simtime_t randist(simtime_t av);
+	/// generator random distribution -- 0=deterministic, 1=exponential, 2=nomrmal(av,av/10)
+	int rantype;
 protected:
 	virtual void initialize();
 	virtual void handleMessage(cMessage *msg);
@@ -101,6 +105,7 @@ void Generator::initialize() {
 		for (int ns=nsize; ns!=1; ns/=2, ++l2) ; // l2=log_2(nsize)
 
 	count = par("count");
+	rantype = par("rantype");
 	togo.setName("ToGo queue");
 	pl = par("packLen");
 	pn = par("packNum");
@@ -207,9 +212,32 @@ vector<int> Generator::chooseDsts(){
 		// }
 		return r;
 	}
+	// transposition
+	if (commPatt==20){
+		int sq=sqrt(nsize);
+		if (nsize!=sq*sq) // not a square number
+			throw cRuntimeError("Number of nodes must a square number for transposition testing");
+		int x=addr%sq;
+		int y=addr/sq;
+		int des=y+x*sq;
+		r.push_back(des);
+		return r;
+	}
 
 	// non-recognized pattern
 	throw cRuntimeError("Non recognized communication pattern: %d", commPatt);
+}
+
+simtime_t Generator::randist(simtime_t av){
+	if (rantype==0)
+		return av;
+	if (rantype==1)
+		return exponential(av);
+	if (rantype==2)
+		return normal(av,av*.1);
+
+	// non-recognized random distribution
+	throw cRuntimeError("Non recognized generator random distribution: %d", rantype);
 }
 
 void Generator::genPack(){
@@ -233,7 +261,8 @@ void Generator::genPack(){
 	}
 	// schedule next packet generation
 	if (--count>0)
-		scheduleAt(simTime()+exponential(deltaG),tog);
+		scheduleAt(simTime()+randist(deltaG),tog);
+		// scheduleAt(simTime()+exponential(deltaG),tog);
 }
 
 void Generator::sendPack(){

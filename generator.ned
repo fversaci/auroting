@@ -28,8 +28,10 @@ simple Generator
         int packLen @unit(B) = default(2 KB);        
         // number of packet to be produced per burst
         int packNum = default(10);
-        // communication pattern -- 0=uniform, 1,2,3=nodes at distance <= 1,2,3, 10=butterfly
-        int commPatt =default(0);        
+        // communication pattern -- 0=uniform, 1,2=nodes at distance <= 1,2, 10=butterfly, 20=transposition
+        int commPatt = default(0);
+        // generator random distribution -- 0=deterministic, 1=exponential, 2=nomrmal(av,av/10)
+        int rantype= default(0);
         @display("i=block/source");
     gates:
         inout inject;
