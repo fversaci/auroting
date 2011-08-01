@@ -22,6 +22,7 @@ simple BRouter
         int EscQueueSize; // size of escape (bubble) queues
         int AdapQueueSize; // size of adaptive queues
         int InOutQueueSize; // size of queues to and from the CPU
+        bool outflank = default(false); // use outflank derouting? default: no
     @display("i=block/routing");
     gates:
         inout inject;
