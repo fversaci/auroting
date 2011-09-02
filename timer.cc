@@ -62,6 +62,7 @@ void Timer::finish() {
   recordScalar("#endTime", simTime());
   recordScalar("#totalHops", hops);
   recordScalar("#totalPacks", rcvdPacks);
+  recordScalar("#totalDerouted", derouted);
 
   recordScalar("#LB", lb);
   recordScalar("#ratio", lb/simTime().dbl());
@@ -73,6 +74,7 @@ void Timer::handleMessage(cMessage *msg) {
   if (dynamic_cast<NoM*>(msg) != NULL){
     NoM* m=(NoM*) msg;
     addRP(m->getCow());
+    addDer(m->getDer());
     int h=m->getHops()-1;
     addHops(h);
     SimTime tt=simTime()-m->getBirthtime();

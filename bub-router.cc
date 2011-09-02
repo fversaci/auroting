@@ -55,6 +55,8 @@ private:
 	bool deroute(Pack* p);
 	/// use outflank derouting?
 	bool outflank;
+	/// edge length of outflank cube
+	int ofEdge;
 	/// test if given queue is full
 	inline bool full(int q);
 	/// test if given queue would leave a bubble after an insertion
@@ -71,14 +73,18 @@ private:
 	void sendPacks();
 	/// flush (N)ACKS and Packs
 	inline void flushAll();
-	/// return minimal paths to destination
-	vector<int> minimal(Pack* p);
-	/// return non-minimal paths to destination
-	vector<int> nonminimal(Pack* p);
+	/// return minimal paths from source to destination
+	vector<int> minimal(int asource, int adest);
+	/// return outflank paths to destination
+	vector<int> ofnonmin(Pack* p);
+	/// return outflanl paths to destination in (-1, 0, 1, 2) format
+	vector<int> ofnonmindirs(Pack* p);
 	/// convert from int address to (x,y,z) coordinates
 	vector<int> addr2coor(int a);
+	/// convert from  (x,y,z) coordinates to int address
+	int coor2addr(vector<int> c);
 	/// add intermediate destinations
-	inline void addMidpoints(Pack* p, int q);
+	inline bool addMidpoints(Pack* p, int q);
 	/// handle ACK messages
 	void handleACK(Ack * ap);
 	/// handle NAK messages
@@ -89,6 +95,8 @@ private:
 	TO* tom;
 	/// Schedule timeout
 	void schedTO();
+	/// compute first midpoint for outflanking
+    int firstMid(Pack * p, int q);
 protected:
 	virtual void handleMessage(cMessage *msg);
 	virtual void initialize();
@@ -111,6 +119,7 @@ BRouter::~BRouter(){
 
 void BRouter::initialize(){
 	outflank = par("outflank");
+	ofEdge = par("ofEdge");
 	for (int i=0; i<2*dim; ++i){
 		freeSpace[2*i] = par("EscQueueSize");
 		freeSpace[2*i+1] = par("AdapQueueSize");
@@ -150,12 +159,13 @@ void BRouter::updateDisplay()
 }
 
 
-vector<int> BRouter::minimal(Pack* p){
+vector<int> BRouter::minimal(int asource, int adest){
 	vector<int> r;
-	// packet destination coordinates
-	vector<int> dest=addr2coor(p->getDst());
+	// get coordinates
+	vector<int> dest=addr2coor(adest);
+	vector<int> source=addr2coor(asource);
 	for (int i=0; i<dim; ++i){
-		int d=(kCoor[i]+dest[i]-coor[i])%kCoor[i]; // (N % k in not well defined if N<0 in C)
+		int d=(kCoor[i]+dest[i]-source[i])%kCoor[i]; // (N % k in not well defined if N<0 in C)
 		if (d==0)
 			continue;
 		if (d <= kCoor[i]/2)
@@ -166,11 +176,35 @@ vector<int> BRouter::minimal(Pack* p){
 	return r;
 }
 
-vector<int> BRouter::nonminimal(Pack* p){
+vector<int> BRouter::ofnonmindirs(Pack* p){
 	vector<int> r;
 	// packet destination coordinates
 	vector<int> dest=addr2coor(p->getDst());
 	for (int i=0; i<dim; ++i){
+		if (ofEdge>=(kCoor[i]/2)){ // ignore dimension which are too thin
+			r.push_back(0);
+			continue;
+		}
+		int d=(kCoor[i]+dest[i]-coor[i])%kCoor[i]; // (N % k in not well defined if N<0 in C)
+		if (d==0){
+			r.push_back(2); // Coor[i]+ and Coor[i]-
+			continue;
+		}
+		if (d > kCoor[i]/2)
+			r.push_back(+1); // Coor[i]+
+		else
+			r.push_back(-1); // Coor[i]-
+	}
+	return r;
+}
+
+vector<int> BRouter::ofnonmin(Pack* p){
+	vector<int> r;
+	// packet destination coordinates
+	vector<int> dest=addr2coor(p->getDst());
+	for (int i=0; i<dim; ++i){
+		if (ofEdge>=(kCoor[i]/2)) // ignore dimension which are too thin
+			continue;
 		int d=(kCoor[i]+dest[i]-coor[i])%kCoor[i]; // (N % k in not well defined if N<0 in C)
 		if (d==0){
 			r.push_back(2*i); // Coor[i]+
@@ -194,6 +228,20 @@ vector<int> BRouter::addr2coor(int a){
 	if (a != 0)
 		ev << "Error in node address: out of range" << endl;
 	return r;
+}
+
+int BRouter::coor2addr(vector<int> c){
+	return c[0]+c[1]*kCoor[0]+c[2]*kCoor[0]*kCoor[1];
+
+	// algorithm for arbitrary dimension number
+	//	int r=0;
+	//	int i=dim-1;
+	//	for(; i>0; --i){
+	//		r += c[i];
+	//		r *= kCoor[i-1];
+	//	}
+	//	r+=c[0];
+	//	return r;
 }
 
 void BRouter::schedTO(){
@@ -306,9 +354,51 @@ void BRouter::enqueue(Pack* p, int q){
 }
 
 
+int BRouter::firstMid(Pack* p, int q)
+{
+    // compute first intermediate destination
+    vector<int> desdir(dim, 0);
+    vector<int> dirs = ofnonmindirs(p);
+    int dq = (q - 1) / 2;
+    int rou = dq / 2; // first routed dimension
+    desdir[rou] = (dq % 2) == 0 ? 1 : -1; // positive or negative direction?
+    for(int d = 0;d < dim;++d){
+        if(d == rou)
+            // first routed direction already chosen
+            continue;
 
-void BRouter::addMidpoints(Pack* p, int q){
-	return;
+        desdir[d] = -dirs[d]; // choose minimal direction for other dimensions
+        if(dirs[d] == 2){
+            // or a random one if both are non-minimal
+            desdir[d] = (intrand(2) == 0) ? 1 : -1;
+        }
+    }
+    vector<int> d1(dim, 0); // first midpoint
+    vector<int> endp = addr2coor(p->getDst()); // final destination
+    for(int d = 0;d < dim;++d){
+        if(d == rou){
+            d1[d] = (coor[d] + ofEdge * desdir[d] + kCoor[d]) % kCoor[d];
+            continue;
+        }
+        d1[d] = (endp[d] + ofEdge * desdir[d] + kCoor[d]) % kCoor[d];
+    }
+
+    return coor2addr(d1);
+}
+
+bool BRouter::addMidpoints(Pack* p, int q){
+    int ad1 = firstMid(p, q);
+	vector<int> min1=minimal(addr, p->getDst());
+	vector<int> min2=minimal(ad1, p->getDst());
+	if (min1==min2) // if intermediate destination is useless return false
+		return false;
+
+	p->setRoute(0, p->getDst());
+	p->setRoute(1, ad1);
+	p->setCurrDst(1);
+	p->setDst(ad1);
+
+	return true;
 }
 
 
@@ -316,26 +406,34 @@ bool BRouter::deroute(Pack* p){
 	// if destination is too close return false?
 	// ............
 
-	// choose some (random) non-minimal direction
-	vector<int> dirs=nonminimal(p);
+	// if not just injected return false
+	if (p->getArrivalGate()->getId()!=gate("inject$i")->getId()){
+		return false;
+	}
+
+	// choose some (random) non-minimal, not too thin direction
+	vector<int> dirs=ofnonmin(p);
 	int n=dirs.size();
 	int ran=intrand(n);
 	for(int d=0; d<n; ++d){
-		int q=1+2*dirs[(ran+d)%n];
+		int qd=(ran+d)%n; // direction \in {0=x+, ..., 5=z-}
+		int q=1+2*dirs[qd];
 		if (!full(q)){ // if one free adaptive queue is found, use it
-			addMidpoints(p,q); // add intermediate destinations
+			if (addMidpoints(p,q)==false) // add intermediate destinations
+				return false;
+			p->setDerouted(true);
 			enqueue(p,q); // insert into q
 			return true;
 		}
 	}
-
+	// packet not derouted
 	return false;
 }
 
 void BRouter::routePack(Pack* p){
 	// try and enqueue in an adaptive queue along some (random) minimal path.
 	// Note: bubble paper prefers to continue along the same direction
-	vector<int> dirs=minimal(p);
+	vector<int> dirs=minimal(addr, p->getDst());
 	int n=dirs.size();
 	int ran=intrand(n);
 	for(int d=0; d<n; ++d){
@@ -347,17 +445,17 @@ void BRouter::routePack(Pack* p){
 	}
 	// if all adaptive queues are full, try the DOR escape one
 	int q=2*dirs[0];
-	/*
-	 * if full drop the packet, if just injected (i.e., it comes from a
-	 * queue different from q) also requires a bubble
-	 */
+	// if full drop the packet, if just injected (i.e., it comes from a
+	// queue different from q) also requires a bubble
 	if (full(q) || (!bubble(q) && p->getQueue()!=q) ) {
-		// try to deroute the packet if just injected from the generator
-		if (outflank && deroute(p))
+		// before discarding it, try to deroute the packet if just injected from the generator
+		if (outflank && deroute(p)){
+			getParentModule()->bubble("Derouted!");
 			return;
+		}
 		sendNAK(p);
 		delete p;
-		getParentModule()->bubble("Packet dropped!");
+		getParentModule()->bubble("Dropped!");
 		return;
 	}
 	// otherwise insert it
@@ -373,7 +471,7 @@ void BRouter::consPack(Pack* p){
 		{
 			sendNAK(p);
 			delete p;
-			getParentModule()->bubble("Packet dropped!");
+			getParentModule()->bubble("Dropped!");
 			return;
 		}
 		// otherwise consume it
@@ -404,10 +502,10 @@ void BRouter::rcvPack(Pack* p){
 	{
 		sendNAK(p);
 		delete p;
-		getParentModule()->bubble("Packet corrupted!");
+		getParentModule()->bubble("Corrupted!");
 		return;
 	}
-	// if packet at destination, consume it
+	// if packet at destination, consume it (or route if a midpoint has been reached)
 	if (p->getDst() == addr)
 		consPack(p);
 	else // otherwise insert it into the right queue

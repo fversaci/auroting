@@ -47,10 +47,14 @@ class Timer: public cSimpleModule {
   void addRP(int n) { rcvdPacks+=n; }
   /// Add a number to hops
   void addHops(int n) { hops+=n; }
+  /// Add a number to derouted
+  void addDer(int n) { derouted+=n; }
   /// packets lifetime
   cOutVector lifetimes;
   cDoubleHistogram hoptimes_hist;
   cDoubleHistogram lifetimes_hist;
+  /// number of derouted packets
+  int derouted;
   /// Varia
   double B,lat,L,count,T,x,y,z,max;
  public:

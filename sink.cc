@@ -25,6 +25,7 @@ void Sink::handleMessage(cMessage *msg) {
     nm->setCow(1);
     nm->setHops(p->getHops());
     nm->setBirthtime(p->getBirthtime());
+    nm->setDer(p->getDerouted()? 1 : 0);
     sendDirect(nm, getParentModule()->getParentModule()->getSubmodule("timer"), "addCow");
   }
   // discard the message

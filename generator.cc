@@ -43,6 +43,8 @@ private:
 	vector<int> addr2coor(int a);
 	/// convert from  (x,y,z) coordinates to int address
 	int coor2addr(vector<int> c);
+	/// this node coordinates
+	vector<int> coor;
 	/// torus dimensions sizes
 	vector<int> kCoor;
 	/// number of dimensions of the torus
@@ -96,8 +98,8 @@ void Generator::initialize() {
 	kCoor[0] = getParentModule()->getParentModule()->par("kX");
 	kCoor[1] = getParentModule()->getParentModule()->par("kY");
 	kCoor[2] = getParentModule()->getParentModule()->par("kZ");
-
 	addr = getParentModule()->par("addr");
+	coor = addr2coor(addr);
 	nsize = getParentModule()->getVectorSize();
 
 	bdim=0; l2=0;
@@ -168,7 +170,7 @@ vector<int> Generator::chooseDsts(){
 	if (commPatt==2){
 		// points along the axes -- num=(4*dim)
 		for (int d=0; d<dim; ++d){
-			vector<int> me=addr2coor(addr);
+			vector<int> me=coor;
 			me[d]=(me[d]+1+kCoor[d])%kCoor[d];
 			r.push_back(coor2addr(me));
 			me[d]=(me[d]+1+kCoor[d])%kCoor[d];
@@ -181,8 +183,8 @@ vector<int> Generator::chooseDsts(){
 		// points reached by going along two different dimensions d1 and d2 -- num=(4*dim)
 		for (int d1=0; d1<dim; ++d1){
 			for (int d2=d1+1; d2<dim; ++d2){
+				vector<int> me=coor;
 				// (1,1)
-				vector<int> me=addr2coor(addr);
 				me[d1]=(me[d1]+1+kCoor[d1])%kCoor[d1];
 				me[d2]=(me[d2]+1+kCoor[d2])%kCoor[d2];
 				r.push_back(coor2addr(me));
@@ -223,7 +225,15 @@ vector<int> Generator::chooseDsts(){
 		r.push_back(des);
 		return r;
 	}
-
+	// tornado
+	if (commPatt==30){
+		vector<int> tor(dim,0);
+		for(int d=0; d<dim; ++d){
+			tor[d]=(coor[d]+(kCoor[d]/2)+(kCoor[d]%2)-1)%kCoor[d];
+		}
+		r.push_back(coor2addr(tor));
+		return r;
+	}
 	// non-recognized pattern
 	throw cRuntimeError("Non recognized communication pattern: %d", commPatt);
 }
