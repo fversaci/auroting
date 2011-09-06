@@ -229,7 +229,7 @@ vector<int> Generator::chooseDsts(){
 	if (commPatt==30){
 		vector<int> tor(dim,0);
 		for(int d=0; d<dim; ++d){
-			tor[d]=(coor[d]+(kCoor[d]/2)+(kCoor[d]%2)-1)%kCoor[d];
+			tor[d]=(coor[d]+(kCoor[d]/2)+(kCoor[d]%2)-1) % kCoor[d];
 		}
 		r.push_back(coor2addr(tor));
 		return r;
@@ -309,5 +309,12 @@ void Generator::handleMessage(cMessage *msg){
 	// if timeout, send a message
 	if (dynamic_cast<TO*>(msg) != NULL){
 		sendPack();
+		return;
 	}
+	  if (dynamic_cast<Pack*>(msg) != NULL){
+	    Pack* p=(Pack *) msg;
+	    p->setReinjectable(false);
+	    togo.insert(p);
+	    return;
+	  }
 }

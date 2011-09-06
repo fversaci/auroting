@@ -20,6 +20,11 @@ Define_Module(Sink);
 void Sink::handleMessage(cMessage *msg) {
   if (dynamic_cast<Pack*>(msg) != NULL){
     Pack* p=(Pack *) msg;
+    // if to be reinjected send it to generator
+    if (p->getReinjectable()){
+    	send(p,"reinj");
+    	return;
+    }
     // notify the counter
     NoM* nm=new NoM();
     nm->setCow(1);

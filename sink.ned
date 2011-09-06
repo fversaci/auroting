@@ -21,4 +21,5 @@ simple Sink
     @display("i=block/sink");
     gates:
         input consume;
+        output reinj; // reinject gate
 }

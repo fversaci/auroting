@@ -35,4 +35,5 @@ simple Generator
         @display("i=block/source");
     gates:
         inout inject;
+        input reinj; // reinject gate
 }

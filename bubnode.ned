@@ -50,4 +50,5 @@ module BubNode
         for i=0..5 {
             router.gate[i] <--> IdealChannel <--> gate[i];
         }
+        sink.reinj --> IdealChannel --> generator.reinj;
 }

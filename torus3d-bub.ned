@@ -26,8 +26,8 @@ network Torus3d_bub
         int kX = default(2);
         int kY = default(2);
         int kZ = default(2);
-        double band @unit(bps) = default (1 Gbps); // bandwidth
-        double lat @unit(s) = default (250 ns); // latency
+        double band @unit(bps) = default(1 Gbps); // bandwidth
+        double lat @unit(s) = default(250 ns); // latency
         @display("i=block/network2");
     types:
         channel Chan extends ned.DatarateChannel
@@ -38,9 +38,9 @@ network Torus3d_bub
     submodules:
         node[kX*kY*kZ]: BubNode {
             addr = index;
+            @display("p=74,49");
         }
-        timer: Timer {
-        }
+        timer: Timer;
     connections:
         // (x,y,z) maps to x+y*kX+z*kX*kY
         for x=0..kX-1, for y=0..kY-1, for z=0..kZ-1 {

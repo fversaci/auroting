@@ -47,6 +47,8 @@ private:
 	inline void enqueue(Pack* p, int q);
 	/// handle the incoming packet
 	inline void rcvPack(Pack* p);
+	/// packet has reached (an intermediate?) destination
+	inline void acceptPack(Pack* p);
 	/// try and consume the packet
 	inline void consPack(Pack* p);
 	/// insert p in the right coda
@@ -96,7 +98,7 @@ private:
 	/// Schedule timeout
 	void schedTO();
 	/// compute first midpoint for outflanking
-    int firstMid(Pack * p, int q);
+    vector<int> twoMids(Pack * p, int q);
 protected:
 	virtual void handleMessage(cMessage *msg);
 	virtual void initialize();
@@ -344,6 +346,7 @@ void BRouter::sendNAK(Pack *mess){
 }
 
 void BRouter::enqueue(Pack* p, int q){
+	p->setReinjectable(false); // not reinjectable
 	// q has already been tested to have free slots
 	sendACK(p);
 	p->setQueue(q);
@@ -354,8 +357,9 @@ void BRouter::enqueue(Pack* p, int q){
 }
 
 
-int BRouter::firstMid(Pack* p, int q)
+vector<int> BRouter::twoMids(Pack* p, int q)
 {
+	vector<int> rr;
     // compute first intermediate destination
     vector<int> desdir(dim, 0);
     vector<int> dirs = ofnonmindirs(p);
@@ -382,17 +386,30 @@ int BRouter::firstMid(Pack* p, int q)
         }
         d1[d] = (endp[d] + ofEdge * desdir[d] + kCoor[d]) % kCoor[d];
     }
+    vector<int> d2(dim, 0); // second midpoint
+    for(int d = 0;d < dim;++d){
+        if(d == rou){
+            // d2[d] = (coor[d] + ofEdge * desdir[d] + kCoor[d]) % kCoor[d];
+            continue;
+        }
+        d2[d] = (endp[d] + desdir[d] + kCoor[d]) % kCoor[d];
+    }
 
-    return coor2addr(d1);
+    rr.push_back(coor2addr(d1));
+    rr.push_back(coor2addr(d2));
+    return rr;
 }
 
 bool BRouter::addMidpoints(Pack* p, int q){
-    int ad1 = firstMid(p, q);
+	vector<int> mids = twoMids(p,q);
+	int ad1 = mids[0];
+	// int ad2 = mids[1];
 	vector<int> min1=minimal(addr, p->getDst());
 	vector<int> min2=minimal(ad1, p->getDst());
 	if (min1==min2) // if intermediate destination is useless return false
 		return false;
 
+	// use just one midpoint
 	p->setRoute(0, p->getDst());
 	p->setRoute(1, ad1);
 	p->setCurrDst(1);
@@ -406,8 +423,8 @@ bool BRouter::deroute(Pack* p){
 	// if destination is too close return false?
 	// ............
 
-	// if not just injected return false
-	if (p->getArrivalGate()->getId()!=gate("inject$i")->getId()){
+	// if not just injected or already derouted return false
+	if (p->getArrivalGate()->getId()!=gate("inject$i")->getId() || p->getDerouted()){
 		return false;
 	}
 
@@ -453,6 +470,12 @@ void BRouter::routePack(Pack* p){
 			getParentModule()->bubble("Derouted!");
 			return;
 		}
+		// if at intermediate destination consume and reinject
+		if (p->getReinjectable()){
+			consPack(p);
+			return;
+		}
+		// otherwise discard it
 		sendNAK(p);
 		delete p;
 		getParentModule()->bubble("Dropped!");
@@ -463,25 +486,30 @@ void BRouter::routePack(Pack* p){
 }
 
 void BRouter::consPack(Pack* p){
+	// reject the packet if consume queue is full
+	if (conq.length()>=ioqsize)
+	{
+		sendNAK(p);
+		delete p;
+		getParentModule()->bubble("Dropped!");
+		return;
+	}
+	// otherwise consume it
+	conq.insert(p);
+	sendACK(p);
+}
+
+void BRouter::acceptPack(Pack* p){
 	int cd=p->getCurrDst();
 	// if final destination is reached
 	if(cd==0){
-		// reject the packet if consume queue is full
-		if (conq.length()>=ioqsize)
-		{
-			sendNAK(p);
-			delete p;
-			getParentModule()->bubble("Dropped!");
-			return;
-		}
-		// otherwise consume it
-		conq.insert(p);
-		sendACK(p);
+		consPack(p);
 		return;
 	}
 	// go to next intermediate destination
 	p->setCurrDst(--cd);
 	p->setDst(p->getRoute(cd));
+	p->setReinjectable(true);
 	routePack(p);
 }
 
@@ -507,7 +535,7 @@ void BRouter::rcvPack(Pack* p){
 	}
 	// if packet at destination, consume it (or route if a midpoint has been reached)
 	if (p->getDst() == addr)
-		consPack(p);
+		acceptPack(p);
 	else // otherwise insert it into the right queue
 		routePack(p);
 }
