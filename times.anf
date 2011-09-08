@@ -32,6 +32,7 @@
           <properties name="Line.Type" value="Points"/>
           <properties name="Line.Type/bub-1-20110802-13:48:45-20806 1 $outflank=false" value="Points"/>
           <properties name="Line.Type/bub-0-20110802-13:48:45-20805 0 $outflank=true" value="Points"/>
+          <properties name="Line.Type/bub-0-20110907-15:37:40-8049 0 $outflank=true" value="Points"/>
         </items>
       </items>
       <items xsi:type="scave:Group" name="boh">

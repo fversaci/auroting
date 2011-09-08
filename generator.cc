@@ -311,10 +311,13 @@ void Generator::handleMessage(cMessage *msg){
 		sendPack();
 		return;
 	}
-	  if (dynamic_cast<Pack*>(msg) != NULL){
-	    Pack* p=(Pack *) msg;
-	    p->setReinjectable(false);
-	    togo.insert(p);
-	    return;
-	  }
+	// packet to reinject
+	if (dynamic_cast<Pack*>(msg) != NULL){
+		Pack* p=(Pack *) msg;
+		p->setReinjectable(false);
+		togo.insert(p);
+		if (!(tom->isScheduled()))  // reactivate message sending if queue was empty
+			sendPack();
+		return;
+	}
 }

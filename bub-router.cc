@@ -97,7 +97,7 @@ private:
 	TO* tom;
 	/// Schedule timeout
 	void schedTO();
-	/// compute first midpoint for outflanking
+	/// compute the midpoints for outflanking (it actually computes only one midpoint)
     vector<int> twoMids(Pack * p, int q);
 protected:
 	virtual void handleMessage(cMessage *msg);
@@ -435,7 +435,8 @@ bool BRouter::deroute(Pack* p){
 	for(int d=0; d<n; ++d){
 		int qd=(ran+d)%n; // direction \in {0=x+, ..., 5=z-}
 		int q=1+2*dirs[qd];
-		if (!full(q)){ // if one free adaptive queue is found, use it
+		// if (!full(q)){ // if one free adaptive queue is found, use it
+		if (bubble(q)){ // if two free slots in an *adaptive* queue are found, use the queue
 			if (addMidpoints(p,q)==false) // add intermediate destinations
 				return false;
 			p->setDerouted(true);
