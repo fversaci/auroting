@@ -25,7 +25,7 @@ simple Generator
         // delta to send a new packet (in saturation units)
         double deltaS = default(1);
         // Packet length
-        int packLen @unit(B) = default(2 KB);        
+        int packLen @unit(B) = default(2 KiB);        
         // number of packet to be produced per burst
         int packNum = default(10);
         // communication pattern -- 0=uniform, 1,2=nodes at distance <= 1,2, 10=butterfly, 20=transposition, 30=tornado

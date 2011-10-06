@@ -59,7 +59,7 @@ class Timer: public cSimpleModule {
   double B,lat,L,count,T,x,y,z,max;
  public:
   /// Constructor
-  Timer() : rcvdPacks(0) {}
+  Timer() : rcvdPacks(0), hops(0), derouted(0) {}
  protected:
   virtual void finish();
   virtual void initialize();
