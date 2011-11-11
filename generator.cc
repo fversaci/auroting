@@ -204,7 +204,7 @@ vector<int> Generator::chooseDsts(){
 	// butterfly
 	if (commPatt==10){
 		if ((nsize & (nsize - 1))!=0) // not power of two (assuming nsize>0)
-			throw cRuntimeError("Number of nodes must be a power of two for butterfly testing");
+			throw cRuntimeError("Number of nodes must be a power of two for butterfly pattern");
 		// for (int bdim=0; bdim<l2; ++bdim){
 		int tog=(1<<bdim); // 2^d
 		bdim=(bdim+1)%l2;
@@ -218,7 +218,7 @@ vector<int> Generator::chooseDsts(){
 	if (commPatt==20){
 		int sq=sqrt(nsize);
 		if (nsize!=sq*sq) // not a square number
-			throw cRuntimeError("Number of nodes must a square number for transposition testing");
+			throw cRuntimeError("Number of nodes must a square number for transposition pattern");
 		int x=addr%sq;
 		int y=addr/sq;
 		int des=y+x*sq;
@@ -233,6 +233,15 @@ vector<int> Generator::chooseDsts(){
 		}
 		r.push_back(coor2addr(tor));
 		return r;
+	}
+	// bitcomplement
+	if (commPatt==40){
+		if ((nsize & (nsize - 1))!=0) // not power of two (assuming nsize>0)
+			throw cRuntimeError("Number of nodes must be a power of two for bitcomplement pattern");
+		int bc=(nsize-1)^addr;
+		r.push_back(bc);
+		return r;
+
 	}
 	// non-recognized pattern
 	throw cRuntimeError("Non recognized communication pattern: %d", commPatt);

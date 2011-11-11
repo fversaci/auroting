@@ -21,24 +21,16 @@
         </items>
       </items>
       <items xsi:type="scave:Group" name="time for hop">
-        <items xsi:type="scave:Add" filterPattern="attr:configname(Butterfly) AND attr:delta(0.5)  " type="VECTOR"/>
+        <items xsi:type="scave:Add" filterPattern="attr:configname(Butterfly) AND attr:dinj(0.7)  AND attr:delta(0.7)  " type="VECTOR"/>
         <items xsi:type="scave:Apply" operation="aggregator">
           <params name="function" value="average"/>
           <groupBy>iterationvars</groupBy>
         </items>
         <items xsi:type="scave:LineChart" name="Life times during execution" lineNameFormat="">
           <properties name="Line.Type" value="Points"/>
-          <properties name="Line.Type/Transposition-1-20111004-12:56:06-32235 1 $delta=0.4, $outflank=false" value="Points"/>
-          <properties name="Line.Type/Transposition-3-20111004-13:05:30-1065 3 $delta=0.5, $outflank=false" value="Points"/>
-          <properties name="Line.Type/Transposition-5-20111004-13:16:17-2676 5 $delta=0.6, $outflank=false" value="Points"/>
-          <properties name="Line.Type/Transposition-7-20111004-13:35:27-5290 7 $delta=0.7, $outflank=false" value="Points"/>
-          <properties name="Line.Type/Transposition-4-20111004-13:15:17-2518 4 $delta=0.6, $outflank=true" value="Points"/>
-          <properties name="Line.Type/Tornado-4-20111004-15:37:51-22218 4 $delta=0.4, $outflank=true" value="Points"/>
-          <properties name="Line.Type/Tornado-5-20111004-15:37:54-22239 5 $delta=0.4, $outflank=false" value="Points"/>
-          <properties name="Line.Display/Tornado-4-20111004-15:37:51-22218 4 $delta=0.4, $outflank=true" value="false"/>
-          <properties name="Line.Display/Tornado-5-20111004-15:37:54-22239 5 $delta=0.4, $outflank=false" value="false"/>
-          <properties name="Line.Type/Butterfly-11-20111005-17:21:35-7381 11 $delta=0.6, $outflank=false" value="Points"/>
-          <properties name="Line.Display/Butterfly-11-20111005-17:21:35-7381 11 $delta=0.6, $outflank=false" value="false"/>
+          <properties name="Line.Type/Butterfly-10-20111011-08:48:36-31003 10 $outflank=true, $dinj=0.7, $delta=0.6" value="Points"/>
+          <properties name="Line.Type/Butterfly-23-20111011-12:26:16-4106 23 $outflank=true, $dinj=2.4, $delta=0.6" value="Points"/>
+          <properties name="Line.Type/Butterfly-36-20111011-15:33:44-1719 36 $outflank=false, $dinj=0.7, $delta=0.6" value="Points"/>
         </items>
       </items>
       <items xsi:type="scave:Group" name="boh">
@@ -49,50 +41,59 @@
         </items>
       </items>
       <items xsi:type="scave:Group" name="butterfly">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Butterfly) AND attr:outflank(false) "/>
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Butterfly) AND attr:outflank(false) AND attr:dinj(0.7)"/>
         <items xsi:type="scave:BarChart" name="butterfly">
+          <barFields>run</barFields>
           <averagedFields>replication</averagedFields>
         </items>
       </items>
       <items xsi:type="scave:Group" name="butterfly out">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Butterfly)AND attr:outflank(true) "/>
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Butterfly) AND attr:outflank(true) AND attr:dinj(0.7)"/>
         <items xsi:type="scave:BarChart" name="butterfly out"/>
       </items>
       <items xsi:type="scave:Group" name="tornado">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Tornado) AND attr:outflank(false) "/>
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Tornado) AND attr:outflank(false)  AND attr:dinj(0.7)"/>
         <items xsi:type="scave:BarChart" name="tornado"/>
       </items>
       <items xsi:type="scave:Group" name="tornado out">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Tornado) AND attr:outflank(true) "/>
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Tornado) AND attr:outflank(true)  AND attr:dinj(0.7)"/>
         <items xsi:type="scave:BarChart" name="tornado out"/>
       </items>
       <items xsi:type="scave:Group" name="uniform">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Uniform) AND attr:outflank(false) "/>
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Uniform) AND attr:outflank(false)  AND attr:dinj(0.7)"/>
         <items xsi:type="scave:BarChart" name="uniform"/>
       </items>
       <items xsi:type="scave:Group" name="uniform out">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Uniform) AND attr:outflank(true) "/>
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Uniform) AND attr:outflank(true)  AND attr:dinj(0.7)"/>
         <items xsi:type="scave:BarChart" name="uniform out"/>
       </items>
       <items xsi:type="scave:Group" name="local">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Local) AND attr:outflank(false) "/>
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Local) AND attr:outflank(false)  AND attr:dinj(0.7)"/>
         <items xsi:type="scave:BarChart" name="local"/>
       </items>
       <items xsi:type="scave:Group" name="local out">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Local) AND attr:outflank(true) "/>
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Local) AND attr:outflank(true)  AND attr:dinj(0.7)"/>
         <items xsi:type="scave:BarChart" name="local out"/>
       </items>
       <items xsi:type="scave:Group" name="transposition">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Transposition) AND attr:outflank(false) "/>
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Transposition) AND attr:outflank(false)  AND attr:dinj(0.7)"/>
         <items xsi:type="scave:BarChart" name="transposition"/>
       </items>
       <items xsi:type="scave:Group" name="transposition out">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Transposition) AND attr:outflank(true) "/>
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Transposition) AND attr:outflank(true)  AND attr:dinj(0.7)"/>
         <items xsi:type="scave:BarChart" name="transposition out"/>
+      </items>
+      <items xsi:type="scave:Group" name="bitcomplement">
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Bitcomplement) AND attr:outflank(false)  AND attr:dinj(0.7)"/>
+        <items xsi:type="scave:BarChart" name="bitcomplement"/>
+      </items>
+      <items xsi:type="scave:Group" name="bitcomplement out">
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Bitcomplement) AND attr:outflank(true)  AND attr:dinj(0.7)"/>
+        <items xsi:type="scave:BarChart" name="bitcomplement out"/>
       </items>
     </datasets>
   </datasets>
   <chartSheets>
-    <chartSheets name="default" charts="//@datasets/@datasets.0/@items.0/@items.1 //@datasets/@datasets.0/@items.1/@items.1 //@datasets/@datasets.0/@items.2/@items.2 //@datasets/@datasets.0/@items.3/@items.1 //@datasets/@datasets.0/@items.4/@items.1 //@datasets/@datasets.0/@items.5/@items.1 //@datasets/@datasets.0/@items.6/@items.1 //@datasets/@datasets.0/@items.7/@items.1 //@datasets/@datasets.0/@items.8/@items.1 //@datasets/@datasets.0/@items.9/@items.1 //@datasets/@datasets.0/@items.10/@items.1 //@datasets/@datasets.0/@items.11/@items.1 //@datasets/@datasets.0/@items.12/@items.1 //@datasets/@datasets.0/@items.13/@items.1"/>
+    <chartSheets name="default" charts="//@datasets/@datasets.0/@items.0/@items.1 //@datasets/@datasets.0/@items.1/@items.1 //@datasets/@datasets.0/@items.2/@items.2 //@datasets/@datasets.0/@items.3/@items.1 //@datasets/@datasets.0/@items.4/@items.1 //@datasets/@datasets.0/@items.5/@items.1 //@datasets/@datasets.0/@items.6/@items.1 //@datasets/@datasets.0/@items.7/@items.1 //@datasets/@datasets.0/@items.8/@items.1 //@datasets/@datasets.0/@items.9/@items.1 //@datasets/@datasets.0/@items.10/@items.1 //@datasets/@datasets.0/@items.11/@items.1 //@datasets/@datasets.0/@items.12/@items.1 //@datasets/@datasets.0/@items.13/@items.1 //@datasets/@datasets.0/@items.14/@items.1 //@datasets/@datasets.0/@items.15/@items.1"/>
   </chartSheets>
 </scave:Analysis>
