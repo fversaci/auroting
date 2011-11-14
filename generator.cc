@@ -272,8 +272,6 @@ void Generator::genPack(){
 			p->setByteLength(pl);
 			p->setDst(dest);
 			p->setSrc(addr);
-			p->setQueue(-1);
-			p->setHops(0);
 			p->setBirthtime(simTime());
 			togo.insert(p);
 		}

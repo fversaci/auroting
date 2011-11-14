@@ -21,7 +21,7 @@
         </items>
       </items>
       <items xsi:type="scave:Group" name="time for hop">
-        <items xsi:type="scave:Add" filterPattern="attr:configname(Butterfly) AND attr:dinj(0.7)  AND attr:delta(0.7)  " type="VECTOR"/>
+        <items xsi:type="scave:Add" filterPattern="attr:configname(Butterfly) AND attr:dinj(0.7)  AND attr:delta(0.55)  " type="VECTOR"/>
         <items xsi:type="scave:Apply" operation="aggregator">
           <params name="function" value="average"/>
           <groupBy>iterationvars</groupBy>
@@ -31,6 +31,8 @@
           <properties name="Line.Type/Butterfly-10-20111011-08:48:36-31003 10 $outflank=true, $dinj=0.7, $delta=0.6" value="Points"/>
           <properties name="Line.Type/Butterfly-23-20111011-12:26:16-4106 23 $outflank=true, $dinj=2.4, $delta=0.6" value="Points"/>
           <properties name="Line.Type/Butterfly-36-20111011-15:33:44-1719 36 $outflank=false, $dinj=0.7, $delta=0.6" value="Points"/>
+          <properties name="Line.Type/Butterfly-38-20111011-15:50:19-4424 38 $outflank=false, $dinj=0.7, $delta=0.7" value="Points"/>
+          <properties name="Line.Type/Butterfly-12-20111011-09:23:57-31030 12 $outflank=true, $dinj=0.7, $delta=0.7" value="Points"/>
         </items>
       </items>
       <items xsi:type="scave:Group" name="boh">
@@ -41,30 +43,29 @@
         </items>
       </items>
       <items xsi:type="scave:Group" name="butterfly">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Butterfly) AND attr:outflank(false) AND attr:dinj(0.7)"/>
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Butterfly) AND attr:outflank(false) AND attr:dinj(2.4)"/>
         <items xsi:type="scave:BarChart" name="butterfly">
-          <barFields>run</barFields>
           <averagedFields>replication</averagedFields>
         </items>
       </items>
       <items xsi:type="scave:Group" name="butterfly out">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Butterfly) AND attr:outflank(true) AND attr:dinj(0.7)"/>
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Butterfly) AND attr:outflank(true) AND attr:dinj(2.4)"/>
         <items xsi:type="scave:BarChart" name="butterfly out"/>
       </items>
       <items xsi:type="scave:Group" name="tornado">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Tornado) AND attr:outflank(false)  AND attr:dinj(0.7)"/>
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Tornado) AND attr:outflank(false)  AND attr:dinj(2.4)"/>
         <items xsi:type="scave:BarChart" name="tornado"/>
       </items>
       <items xsi:type="scave:Group" name="tornado out">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Tornado) AND attr:outflank(true)  AND attr:dinj(0.7)"/>
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Tornado) AND attr:outflank(true)  AND attr:dinj(2.4)"/>
         <items xsi:type="scave:BarChart" name="tornado out"/>
       </items>
       <items xsi:type="scave:Group" name="uniform">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Uniform) AND attr:outflank(false)  AND attr:dinj(0.7)"/>
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Uniform) AND attr:outflank(false)  AND attr:dinj(2.4)"/>
         <items xsi:type="scave:BarChart" name="uniform"/>
       </items>
       <items xsi:type="scave:Group" name="uniform out">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Uniform) AND attr:outflank(true)  AND attr:dinj(0.7)"/>
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Uniform) AND attr:outflank(true)  AND attr:dinj(2.4)"/>
         <items xsi:type="scave:BarChart" name="uniform out"/>
       </items>
       <items xsi:type="scave:Group" name="local">
@@ -76,19 +77,19 @@
         <items xsi:type="scave:BarChart" name="local out"/>
       </items>
       <items xsi:type="scave:Group" name="transposition">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Transposition) AND attr:outflank(false)  AND attr:dinj(0.7)"/>
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Transposition) AND attr:outflank(false)  AND attr:dinj(2.4)"/>
         <items xsi:type="scave:BarChart" name="transposition"/>
       </items>
       <items xsi:type="scave:Group" name="transposition out">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Transposition) AND attr:outflank(true)  AND attr:dinj(0.7)"/>
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Transposition) AND attr:outflank(true)  AND attr:dinj(2.4)"/>
         <items xsi:type="scave:BarChart" name="transposition out"/>
       </items>
       <items xsi:type="scave:Group" name="bitcomplement">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Bitcomplement) AND attr:outflank(false)  AND attr:dinj(0.7)"/>
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Bitcomplement) AND attr:outflank(false)  AND attr:dinj(2.4)"/>
         <items xsi:type="scave:BarChart" name="bitcomplement"/>
       </items>
       <items xsi:type="scave:Group" name="bitcomplement out">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Bitcomplement) AND attr:outflank(true)  AND attr:dinj(0.7)"/>
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Bitcomplement) AND attr:outflank(true)  AND attr:dinj(2.4)"/>
         <items xsi:type="scave:BarChart" name="bitcomplement out"/>
       </items>
     </datasets>

@@ -4,7 +4,7 @@ size(x=8cm,y=6cm,IgnoreAspect);
 locale("C");
 
 real x[] = { 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70};
-include "./all07.data";
+include "./all24.data";
 
 void plof(Label ll, real yb[], real yo[], pen penna){
   yb=1e6*yb;
@@ -26,8 +26,8 @@ plof(Label("Transposition"), tryb, tryo, magenta);
 plof(Label("Tornado"), toyb, toyo, cyan);
 
 xlimits(min=0.1, max=0.7);
-ylimits(min=0, max=120, Crop);
+ylimits(min=0, max=100, Crop);
 xaxis("Injection rate", BottomTop, LeftTicks);
 yaxis("Average latency ($\mu$s)", LeftRight, RightTicks);
-add(scale(.45)*legend(),.65*point((1,0)),UnFill);
+add(scale(.45)*legend(),.67*point((1,-0.1)),UnFill);
 

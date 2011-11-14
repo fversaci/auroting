@@ -23,6 +23,7 @@ simple BRouter
         int AdapQueueSize; // size of adaptive queues
         int InOutQueueSize; // size of queues to and from the CPU
         bool outflank = default(false); // use outflank derouting? default: no
+        bool cqr = default(false); // use cqr routing? default: no
         int ofEdge = default(2); // Edge of outflank cube
     @display("i=block/routing");
     gates:

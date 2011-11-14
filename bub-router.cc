@@ -57,6 +57,10 @@ private:
 	bool deroute(Pack* p);
 	/// use outflank derouting?
 	bool outflank;
+	/// use CQR routing
+	bool cqr;
+	/// choose directions used by CQR
+	void chooseCQRdirs(Pack* p);
 	/// edge length of outflank cube
 	int ofEdge;
 	/// test if given queue is full
@@ -75,11 +79,11 @@ private:
 	void sendPacks();
 	/// flush (N)ACKS and Packs
 	inline void flushAll();
-	/// return minimal paths from source to destination
-	vector<int> minimal(int asource, int adest);
+	/// return minimal paths from source to destination p->getDst()
+	vector<int> minimal(int asource, Pack* p);
 	/// return outflank paths to destination
 	vector<int> ofnonmin(Pack* p);
-	/// return outflanl paths to destination in (-1, 0, 1, 2) format
+	/// return outflank paths to destination in (-1, 0, 1, 2) format
 	vector<int> ofnonmindirs(Pack* p);
 	/// convert from int address to (x,y,z) coordinates
 	vector<int> addr2coor(int a);
@@ -147,6 +151,9 @@ void BRouter::initialize(){
 	}
 	WATCH_MAP(nacks);
 	tom = new TO("Timeout");
+	if (cqr && outflank) // CQR and OutFlank cannot both be activated
+		throw cRuntimeError("CQR and OutFlank cannot both be activated");
+
 }
 
 void BRouter::finish(){
@@ -161,19 +168,24 @@ void BRouter::updateDisplay()
 }
 
 
-vector<int> BRouter::minimal(int asource, int adest){
+vector<int> BRouter::minimal(int asource, Pack* p){
+	int adest = p->getDst();
 	vector<int> r;
 	// get coordinates
 	vector<int> dest=addr2coor(adest);
 	vector<int> source=addr2coor(asource);
 	for (int i=0; i<dim; ++i){
-		int d=(kCoor[i]+dest[i]-source[i])%kCoor[i]; // (N % k in not well defined if N<0 in C)
+		int d=(kCoor[i]+dest[i]-source[i])%kCoor[i]; // (N % k is not well defined if N<0 in C)
 		if (d==0)
 			continue;
-		if (d <= kCoor[i]/2)
-			r.push_back(2*i); // Coor[i]+
-		else
-			r.push_back(2*i+1); // Coor[i]-
+		if (!cqr){ // not CQR routing
+			if (d <= kCoor[i]/2)
+				r.push_back(2*i); // Coor[i]+
+			else
+				r.push_back(2*i+1); // Coor[i]-
+		} else { // CQR routing
+			r.push_back(2*i+p->getCqrdir(i));
+		}
 	}
 	return r;
 }
@@ -404,8 +416,8 @@ bool BRouter::addMidpoints(Pack* p, int q){
 	vector<int> mids = twoMids(p,q);
 	int ad1 = mids[0];
 	// int ad2 = mids[1];
-	vector<int> min1=minimal(addr, p->getDst());
-	vector<int> min2=minimal(ad1, p->getDst());
+	vector<int> min1=minimal(addr, p);
+	vector<int> min2=minimal(ad1, p);
 	if (min1==min2) // if intermediate destination is useless return false
 		return false;
 
@@ -435,7 +447,6 @@ bool BRouter::deroute(Pack* p){
 	for(int d=0; d<n; ++d){
 		int qd=(ran+d)%n; // direction \in {0=x+, ..., 5=z-}
 		int q=1+2*dirs[qd];
-		// if (!full(q)){ // if one free adaptive queue is found, use it
 		if (bubble(q)){ // if two free slots in an *adaptive* queue are found, use the queue
 			if (addMidpoints(p,q)==false) // add intermediate destinations
 				return false;
@@ -448,10 +459,17 @@ bool BRouter::deroute(Pack* p){
 	return false;
 }
 
+void BRouter::chooseCQRdirs(Pack* p){
+	return;
+}
+
 void BRouter::routePack(Pack* p){
+	// if CRQ and just injected then choose packets directions once for all
+	if (cqr && p->getQueue()==-1)
+		chooseCQRdirs(p);
 	// try and enqueue in an adaptive queue along some (random) minimal path.
 	// Note: bubble paper prefers to continue along the same direction
-	vector<int> dirs=minimal(addr, p->getDst());
+	vector<int> dirs=minimal(addr, p);
 	int n=dirs.size();
 	int ran=intrand(n);
 	for(int d=0; d<n; ++d){
