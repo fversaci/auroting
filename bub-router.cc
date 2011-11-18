@@ -89,6 +89,10 @@ private:
 	vector<int> addr2coor(int a);
 	/// convert from  (x,y,z) coordinates to int address
 	int coor2addr(vector<int> c);
+	/// convert from orthant index to (\pm,\pm,\pm) coordinates
+	vector<int> ind2orth(int a);
+	/// convert from (\pm,\pm,\pm) coordinates to orthant index
+	int orth2ind(vector<int> c);
 	/// add intermediate destinations
 	inline bool addMidpoints(Pack* p, int q);
 	/// handle ACK messages
@@ -124,7 +128,6 @@ BRouter::~BRouter(){
 }
 
 void BRouter::initialize(){
-	outflank = par("outflank");
 	ofEdge = par("ofEdge");
 	for (int i=0; i<2*dim; ++i){
 		freeSpace[2*i] = par("EscQueueSize");
@@ -151,9 +154,25 @@ void BRouter::initialize(){
 	}
 	WATCH_MAP(nacks);
 	tom = new TO("Timeout");
-	if (cqr && outflank) // CQR and OutFlank cannot both be activated
-		throw cRuntimeError("CQR and OutFlank cannot both be activated");
-
+	// choose routing algorithm
+	int alg=par("algorithm");
+	switch (alg) {
+		case 0:
+			outflank=false;
+			cqr=false;
+			break;
+		case 1:
+			outflank=true;
+			cqr=false;
+			break;
+		case 2:
+			cqr=true;
+			outflank=false;
+			break;
+		default:
+			throw cRuntimeError("Unknown routing algorithm: %d", alg);
+			break;
+	}
 }
 
 void BRouter::finish(){
@@ -253,6 +272,31 @@ int BRouter::coor2addr(vector<int> c){
 	//	for(; i>0; --i){
 	//		r += c[i];
 	//		r *= kCoor[i-1];
+	//	}
+	//	r+=c[0];
+	//	return r;
+}
+
+vector<int> BRouter::ind2orth(int a){
+	vector<int> r(dim,0);
+	for(int i=0; i<dim; ++i){
+		r[i] = a % 2;
+		a /= 2;
+	}
+	if (a != 0)
+		ev << "Error in node address: out of range" << endl;
+	return r;
+}
+
+int BRouter::orth2ind(vector<int> c){
+	return c[0]+c[1]*2+c[2]*4;
+
+	// algorithm for arbitrary dimension number
+	//	int r=0;
+	//	int i=dim-1;
+	//	for(; i>0; --i){
+	//		r += c[i];
+	//		r *= 2;
 	//	}
 	//	r+=c[0];
 	//	return r;
@@ -460,11 +504,52 @@ bool BRouter::deroute(Pack* p){
 }
 
 void BRouter::chooseCQRdirs(Pack* p){
+	// get coordinates
+	vector<int> dest=addr2coor(p->getDst());
+	vector<int> source=addr2coor(addr);
+	// occupancy for each direction
+	vector<int> oc(2*dim, 0);
+	for(int i=0; i<2*dim; ++i){
+		oc[i]=((int) par("AdapQueueSize"))-freeSpace[2*i+1];
+	}
+	// distance along each direction
+	vector<int> dists(2*dim, 0);
+	for (int i=0; i<dim; ++i){
+		int d=(kCoor[i]+dest[i]-source[i])%kCoor[i]; // (N % k is not well defined if N<0 in C)
+		if (d==0)
+			continue;
+		dists[2*i]=d;
+		dists[2*i+1]=kCoor[i]-d;
+	}
+	// distance and occupancy for each orthant
+	vector<int> distorth(1<<dim, 0);
+	vector<int> ocorth(1<<dim, 0);
+	for (int i=0; i<(1<<dim); ++i){
+		vector<int> o=ind2orth(i);
+		for(int d=0; d<dim; ++d){
+			distorth[i]+=dists[2*d+o[d]];
+			ocorth[i]+=oc[2*d+o[d]];
+		}
+	}
+	// select orthant for routing
+	int ort=0;
+	int distoc=INT_MAX; // product distance*occupancy
+	for (int i=0; i<(1<<dim); ++i){
+		int prior=distorth[i]*ocorth[i];
+		if (prior<distoc){
+			ort=i;
+			distoc=prior;
+		}
+	}
+	// save directions for CQR routing in the packet
+	vector<int> o=ind2orth(ort);
+	for (int i=0; i<dim; ++i)
+		p->setCqrdir(i,o[i]);
 	return;
 }
 
 void BRouter::routePack(Pack* p){
-	// if CRQ and just injected then choose packets directions once for all
+	// if CQR and just injected then choose dimensions directions once for all
 	if (cqr && p->getQueue()==-1)
 		chooseCQRdirs(p);
 	// try and enqueue in an adaptive queue along some (random) minimal path.

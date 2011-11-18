@@ -3,15 +3,15 @@
 DEFPROCS=2 # default number of processors to run
 PROCS=${1:-$DEFPROCS}  # set processors number to $1 if set, to DEFPROCS otherwise
 
-#CONFS=(Uniform Butterfly Transposition)
+##CONFS=(Uniform Butterfly Transposition)
 
 
-CONFS[${#CONFS[*]}]='Uniform'
+#CONFS[${#CONFS[*]}]='Uniform'
 CONFS[${#CONFS[*]}]='Butterfly'
-CONFS[${#CONFS[*]}]='Transposition'
-CONFS[${#CONFS[*]}]='Bitcomplement'
-CONFS[${#CONFS[*]}]='Local'
-CONFS[${#CONFS[*]}]='Tornado'
+#CONFS[${#CONFS[*]}]='Transposition'
+#CONFS[${#CONFS[*]}]='Bitcomplement'
+#CONFS[${#CONFS[*]}]='Local'
+#CONFS[${#CONFS[*]}]='Tornado'
 
 # delete old simulations files
 find results/ \( -name '*.sca' -o -name '*.vec' -o -name '*.vci' \) -delete

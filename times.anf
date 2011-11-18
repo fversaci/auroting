@@ -43,58 +43,35 @@
         </items>
       </items>
       <items xsi:type="scave:Group" name="butterfly">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Butterfly) AND attr:outflank(false) AND attr:dinj(2.4)"/>
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Butterfly)"/>
         <items xsi:type="scave:BarChart" name="butterfly">
+          <groupByFields>measurement</groupByFields>
           <averagedFields>replication</averagedFields>
         </items>
       </items>
-      <items xsi:type="scave:Group" name="butterfly out">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Butterfly) AND attr:outflank(true) AND attr:dinj(2.4)"/>
-        <items xsi:type="scave:BarChart" name="butterfly out"/>
-      </items>
       <items xsi:type="scave:Group" name="tornado">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Tornado) AND attr:outflank(false)  AND attr:dinj(2.4)"/>
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Tornado) "/>
         <items xsi:type="scave:BarChart" name="tornado"/>
       </items>
-      <items xsi:type="scave:Group" name="tornado out">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Tornado) AND attr:outflank(true)  AND attr:dinj(2.4)"/>
-        <items xsi:type="scave:BarChart" name="tornado out"/>
-      </items>
       <items xsi:type="scave:Group" name="uniform">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Uniform) AND attr:outflank(false)  AND attr:dinj(2.4)"/>
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Uniform)"/>
         <items xsi:type="scave:BarChart" name="uniform"/>
       </items>
-      <items xsi:type="scave:Group" name="uniform out">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Uniform) AND attr:outflank(true)  AND attr:dinj(2.4)"/>
-        <items xsi:type="scave:BarChart" name="uniform out"/>
-      </items>
       <items xsi:type="scave:Group" name="local">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Local) AND attr:outflank(false)  AND attr:dinj(0.7)"/>
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Local)"/>
         <items xsi:type="scave:BarChart" name="local"/>
       </items>
-      <items xsi:type="scave:Group" name="local out">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Local) AND attr:outflank(true)  AND attr:dinj(0.7)"/>
-        <items xsi:type="scave:BarChart" name="local out"/>
-      </items>
       <items xsi:type="scave:Group" name="transposition">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Transposition) AND attr:outflank(false)  AND attr:dinj(2.4)"/>
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Transposition)"/>
         <items xsi:type="scave:BarChart" name="transposition"/>
       </items>
-      <items xsi:type="scave:Group" name="transposition out">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Transposition) AND attr:outflank(true)  AND attr:dinj(2.4)"/>
-        <items xsi:type="scave:BarChart" name="transposition out"/>
-      </items>
       <items xsi:type="scave:Group" name="bitcomplement">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Bitcomplement) AND attr:outflank(false)  AND attr:dinj(2.4)"/>
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Bitcomplement)"/>
         <items xsi:type="scave:BarChart" name="bitcomplement"/>
-      </items>
-      <items xsi:type="scave:Group" name="bitcomplement out">
-        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Bitcomplement) AND attr:outflank(true)  AND attr:dinj(2.4)"/>
-        <items xsi:type="scave:BarChart" name="bitcomplement out"/>
       </items>
     </datasets>
   </datasets>
   <chartSheets>
-    <chartSheets name="default" charts="//@datasets/@datasets.0/@items.0/@items.1 //@datasets/@datasets.0/@items.1/@items.1 //@datasets/@datasets.0/@items.2/@items.2 //@datasets/@datasets.0/@items.3/@items.1 //@datasets/@datasets.0/@items.4/@items.1 //@datasets/@datasets.0/@items.5/@items.1 //@datasets/@datasets.0/@items.6/@items.1 //@datasets/@datasets.0/@items.7/@items.1 //@datasets/@datasets.0/@items.8/@items.1 //@datasets/@datasets.0/@items.9/@items.1 //@datasets/@datasets.0/@items.10/@items.1 //@datasets/@datasets.0/@items.11/@items.1 //@datasets/@datasets.0/@items.12/@items.1 //@datasets/@datasets.0/@items.13/@items.1 //@datasets/@datasets.0/@items.14/@items.1 //@datasets/@datasets.0/@items.15/@items.1"/>
+    <chartSheets name="default" charts="//@datasets/@datasets.0/@items.0/@items.1 //@datasets/@datasets.0/@items.1/@items.1 //@datasets/@datasets.0/@items.2/@items.2 //@datasets/@datasets.0/@items.3/@items.1 //@datasets/@datasets.0/@items.4/@items.1 //@datasets/@datasets.0/@items.5/@items.1 //@datasets/@datasets.0/@items.6/@items.1 //@datasets/@datasets.0/@items.7/@items.1 //@datasets/@datasets.0/@items.8/@items.1 //@datasets/@datasets.0/@items.9/@items.1"/>
   </chartSheets>
 </scave:Analysis>
