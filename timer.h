@@ -49,17 +49,25 @@ class Timer: public cSimpleModule {
   void addHops(int n) { hops+=n; }
   /// Add a number to derouted
   void addDer(int n) { derouted+=n; }
+  /// Add a number to ofl
+  void addOfl(int n) { ofl+=n; }
+  /// Add a number to cqr
+  void addCqr(int n) { cqr+=n; }
   /// packets lifetime
   cOutVector lifetimes;
   cDoubleHistogram hoptimes_hist;
   cDoubleHistogram lifetimes_hist;
   /// number of derouted packets
   int derouted;
+  /// number of OutFlanked packets
+  int ofl;
+  /// number of CQRed packets
+  int cqr;
   /// Varia
   double B,lat,L,count,T,x,y,z,max;
  public:
   /// Constructor
-  Timer() : rcvdPacks(0), hops(0), derouted(0) {}
+  Timer() : rcvdPacks(0), hops(0), derouted(0), ofl(0), cqr(0) {}
  protected:
   virtual void finish();
   virtual void initialize();

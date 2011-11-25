@@ -24,8 +24,8 @@ void plof(Label ll, real yb[], real yo[], real yc[], pen penna){
   draw(graph(xc,yc),penna+dotted);
 };
 
-plof(Label("Uniform"), unyb, unyo, unyc, red);
-// plof(Label("Butterfly"), buyb, buyo, buyc, green);
+// plof(Label("Uniform"), unyb, unyo, unyc, red);
+plof(Label("Butterfly"), buyb, buyo, buyc, green);
 // plof(Label("BitComplement"), biyb, biyo, biyc, blue);
 // plof(Label("Transposition"), tryb, tryo, tryc, magenta);
 // plof(Label("Tornado"), toyb, toyo, toyc, cyan);

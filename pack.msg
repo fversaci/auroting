@@ -30,6 +30,8 @@ packet Pack {
     string displayString = "b=10,10,oval,blue";
     ByteLength = 1000;
     int cqrdir[3] = 0; // which direction in dimension i? (0=+, 1=-) -- used by CQR 
+    bool OFlanked = false;
+    bool CQRed = false;
 }
 
 // ACK packet
@@ -63,5 +65,7 @@ message NoM {
     int cow; // counter increment
     int hops; // hops increment 
     int der; // derouted increment
+    int cqr; // CQRed packets
+    int ofl; // OFed packets
     simtime_t birthtime; // birth time
 }

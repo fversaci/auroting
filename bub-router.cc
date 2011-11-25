@@ -54,13 +54,15 @@ private:
 	/// insert p in the right coda
 	void routePack(Pack* p);
 	/// see if it's ok to deroute a packet (with OutFlank or CQR)
-	void tryToDeroute(Pack *p);
-	/// try and OutFlank deroute packet if just injected
-	void OFderoute(Pack* p);
+	void setRouting(Pack *p);
 	/// distance of a path through a midpoint
 	int distance3(int asource, int amid, int adest);
 	/// distance between two points (minimal)
 	int distance2(int asource, int adest);
+	/// set minimal directions for the packet routing
+	void setmindirs(Pack* p);
+	/// set routing directions for packets along orthant ort
+	void setCQRdirs(Pack* p, int ort);
 	/// use outflank derouting?
 	bool outflank;
 	/// is minimal orthant free enough to send something?
@@ -68,9 +70,9 @@ private:
 	/// use CQR routing
 	bool cqr;
 	/// choose directions used by CQR
-	void chooseCQRdirs(Pack* p);
-	/// orthant for OutFLank derouting
-	int chooseOFmid(Pack* p);
+	int chooseCQRdirs(Pack* p, int* cqrdist);
+	/// choose OF midpoint (ofdist set to distance through the midpoint)
+	int chooseOFmid(Pack* p, int* ofdist);
 	/// edge length of outflank cube
 	int ofEdge;
 	/// test if given queue is full
@@ -104,7 +106,7 @@ private:
 	/// convert from (\pm,\pm,\pm) coordinates to orthant index
 	int orth2ind(vector<int> c);
 	/// add intermediate destinations
-	inline bool addOFMidpoint(Pack* p, int ort);
+	inline bool setOFmidpoint(Pack* p, int ort);
 	/// handle ACK messages
 	void handleACK(Ack * ap);
 	/// handle NAK messages
@@ -179,6 +181,10 @@ void BRouter::initialize(){
 			cqr=true;
 			outflank=false;
 			break;
+		case 3:
+			cqr=true;
+			outflank=true;
+			break;
 		default:
 			throw cRuntimeError("Unknown routing algorithm: %d", alg);
 			break;
@@ -201,16 +207,12 @@ vector<int> BRouter::routedirs(Pack* p){
 	int adest=p->getDst();
 	vector<int> dest=addr2coor(adest);
 	vector<int> source=addr2coor(addr);
-	// CQR?
-	if (cqr)
-		for (int i=0; i<dim; ++i){
-			int d=(kCoor[i]+dest[i]-source[i])%kCoor[i]; // (N % k is not well defined if N<0 in C)
-			if (d==0)
-				continue;
-			r.push_back(2*i+p->getCqrdir(i));
+	for (int i=0; i<dim; ++i){
+		int d=(kCoor[i]+dest[i]-source[i])%kCoor[i]; // (N % k is not well defined if N<0 in C)
+		if (d==0)
+			continue;
+		r.push_back(2*i+p->getCqrdir(i));
 		}
-	else
-		r=minimal(addr, adest);
 	return r;
 }
 
@@ -417,13 +419,16 @@ int BRouter::OFMid(Pack* p, int ort){
     return coor2addr(mid);
 }
 
-bool BRouter::addOFMidpoint(Pack* p, int mid){
+bool BRouter::setOFmidpoint(Pack* p, int mid){
+	if(mid<0)
+		throw cRuntimeError("Negative midpoint for OutFlank");
 	p->setRoute(0, p->getDst());
 	p->setRoute(1, mid);
 	p->setCurrDst(1);
 	p->setDst(mid);
 	p->setDerouted(true);
-
+	p->setOFlanked(true);
+	setmindirs(p);
 	return true;
 }
 
@@ -437,31 +442,49 @@ bool BRouter::minfree(Pack* p){
 	return (adapfree>=1);
 }
 
-void BRouter::OFderoute(Pack* p){
+void BRouter::setRouting(Pack* p){
 	// if destination is too close return false?
 	// ............
 
-	// already derouted abort
+	// as default go minimal
+	setmindirs(p);
+
+	// if already derouted exit
 	if (p->getDerouted()){
 		return;
 	}
 
-	// if minimal orthant is not congested use it (go minimal)
+	// if minimal orthant is not congested exit (go minimal)
 	if (minfree(p))
 		return;
 
-	// choose the midpoint
-	int mid=chooseOFmid(p);
-	if (mid==-1) // do not deroute if not convenient
+	int OFdist=INT_MAX; // distance using OF
+	int CQRdist=INT_MAX; // distance using CQR
+
+	// choose best OF midpoint
+	int mid=-1;
+	if(outflank)
+		mid=chooseOFmid(p, &OFdist);
+
+	// choose best orthant for CQR
+	int ort=-1;
+	if(cqr)
+		ort=chooseCQRdirs(p, &CQRdist);
+
+	// if no space on alternate routes, exit (keep going minimal)
+	if (CQRdist==INT_MAX && OFdist==INT_MAX)
 		return;
 
-	// add the chosen midpoint
-	addOFMidpoint(p,mid);
+	// choose the best (shortest path) between OF and CQR paths
+	if(CQRdist<OFdist)
+		setCQRdirs(p,ort);
+	else
+		setOFmidpoint(p,mid);
 }
 
-int BRouter::chooseOFmid(Pack* p){
+int BRouter::chooseOFmid(Pack* p, int* ofdist){
 	vector<int> mids;
-	// choose the admissible one with maximum free space
+	// choose the admissible midpoint with maximum free space
 	int md=-1; // midpoint
 	int mf=0;  // free slots
 	int mind=INT_MAX; // minimum distance
@@ -501,6 +524,7 @@ int BRouter::chooseOFmid(Pack* p){
 			mind=dis;
 		}
 	}
+	*ofdist=mind; // save its distance
 	// use the computed midpoint
 	return md;
 }
@@ -522,14 +546,14 @@ int BRouter::distance2(int asource, int adest){
 	return dis;
 }
 
-void BRouter::chooseCQRdirs(Pack* p){
+int BRouter::chooseCQRdirs(Pack* p, int* cqrdist){
 	// get coordinates
 	vector<int> dest=addr2coor(p->getDst());
 	vector<int> source=addr2coor(addr);
-	// occupancy for each direction
-	vector<int> oc(2*dim, 0);
+	// free slots for each direction
+	vector<int> fsl(2*dim, 0);
 	for(int i=0; i<2*dim; ++i){
-		oc[i]=((int) par("AdapQueueSize"))-freeSpace[2*i+1];
+		fsl[i]=freeSpace[2*i+1];
 	}
 	// distance along each direction
 	vector<int> dists(2*dim, 0);
@@ -542,53 +566,33 @@ void BRouter::chooseCQRdirs(Pack* p){
 	}
 	// distance and occupancy for each orthant
 	vector<int> distorth(1<<dim, 0);
-	vector<int> ocorth(1<<dim, 0);
+	vector<int> fslorth(1<<dim, 0);
 	for (int i=0; i<(1<<dim); ++i){
 		vector<int> o=ind2orth(i);
 		for(int d=0; d<dim; ++d){
 			distorth[i]+=dists[2*d+o[d]];
-			ocorth[i]+=oc[2*d+o[d]];
+			if(dists[2*d+o[d]!=0]) // consider only directions that will be used
+				fslorth[i]+=fsl[2*d+o[d]];
 		}
 	}
 	// select orthant for routing
-	int ort=0;
-	int distoc=distorth[0]*ocorth[0]; // product distance*occupancy
-	for (int i=1; i<(1<<dim); ++i){
-		int prior=distorth[i]*ocorth[i];
-		if (prior<distoc){
+	int ort=-1;
+	int mindist=INT_MAX;
+	for (int i=0; i<(1<<dim); ++i){
+		if (distorth[i]<mindist && fslorth[i]>0){
 			ort=i;
-			distoc=prior;
+			mindist=distorth[i];
 		}
 	}
-	// save directions for CQR routing in the packet
-	vector<int> o=ind2orth(ort);
-	bool nonmin=false;
-	for (int i=0; i<dim; ++i){
-		p->setCqrdir(i,o[i]);
-		if (!isinminimal(p,i,o[i]))
-			nonmin=true;
-	}
-	if (nonmin)
-		p->setDerouted(true);
+	*cqrdist=mindist;
+	return ort;
 }
 
-void BRouter::tryToDeroute(Pack* p){
-	// if CQR then choose dimensions directions once for all
-	if (cqr){
-		chooseCQRdirs(p);
-		return;
-	}
-	if (outflank){
-		OFderoute(p);
-		return;
-	}
-	return;
-}
 
 void BRouter::routePack(Pack* p){
 	// if just injected consider derouting the packet (if OutFlank or CQR)
 	if (p->getQueue()==-1)
-		tryToDeroute(p);
+		setRouting(p);
 	// try and enqueue in an adaptive queue along some (random) minimal path.
 	// Note: bubble paper prefers to continue along the same direction
 	vector<int> dirs=routedirs(p);
@@ -646,7 +650,34 @@ void BRouter::acceptPack(Pack* p){
 	p->setCurrDst(--cd);
 	p->setDst(p->getRoute(cd));
 	p->setReinjectable(true);
+	setmindirs(p);
 	routePack(p);
+}
+
+void BRouter::setmindirs(Pack* p){
+	vector<int> mindirs=minimal(addr, p->getDst());
+	for (int i=0; i<(int) mindirs.size(); ++i){
+		int d=mindirs[i]/2;
+		int dir=mindirs[i]%2;
+		p->setCqrdir(d,dir);
+	}
+}
+
+void BRouter::setCQRdirs(Pack* p, int ort){
+	if(ort<0)
+		throw cRuntimeError("Negative orthant for CQR");
+	// save directions for CQR routing in the packet
+	vector<int> o=ind2orth(ort);
+	bool nonmin=false;
+	for (int i=0; i<dim; ++i){
+		p->setCqrdir(i,o[i]);
+		if (!isinminimal(p,i,o[i]))
+			nonmin=true;
+	}
+	if (nonmin){
+		p->setDerouted(true);
+		p->setCQRed(true);
+	}
 }
 
 void BRouter::flushCons(){
