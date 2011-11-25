@@ -55,7 +55,9 @@
       </items>
       <items xsi:type="scave:Group" name="uniform">
         <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Uniform)"/>
-        <items xsi:type="scave:BarChart" name="uniform"/>
+        <items xsi:type="scave:BarChart" name="uniform">
+          <groupByFields>measurement</groupByFields>
+        </items>
       </items>
       <items xsi:type="scave:Group" name="local">
         <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Local)"/>
