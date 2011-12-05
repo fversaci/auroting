@@ -44,10 +44,7 @@
       </items>
       <items xsi:type="scave:Group" name="butterfly">
         <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Butterfly)"/>
-        <items xsi:type="scave:BarChart" name="butterfly">
-          <groupByFields>measurement</groupByFields>
-          <averagedFields>replication</averagedFields>
-        </items>
+        <items xsi:type="scave:BarChart" name="butterfly"/>
       </items>
       <items xsi:type="scave:Group" name="tornado">
         <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Tornado) "/>
@@ -55,9 +52,7 @@
       </items>
       <items xsi:type="scave:Group" name="uniform">
         <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Uniform)"/>
-        <items xsi:type="scave:BarChart" name="uniform">
-          <groupByFields>measurement</groupByFields>
-        </items>
+        <items xsi:type="scave:BarChart" name="uniform"/>
       </items>
       <items xsi:type="scave:Group" name="local">
         <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Local)"/>

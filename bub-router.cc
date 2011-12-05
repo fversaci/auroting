@@ -70,9 +70,11 @@ private:
 	/// use CQR routing
 	bool cqr;
 	/// choose directions used by CQR
-	int chooseCQRdirs(Pack* p, int* cqrdist);
+	int chooseCQRdirs(Pack* p, double* pr);
 	/// choose OF midpoint (ofdist set to distance through the midpoint)
-	int chooseOFmid(Pack* p, int* ofdist);
+	int chooseOFmid(Pack* p, double* pr);
+	/// computes priority of a path as function of free slots and distance lenghtening (proposed/minimal)
+	double prior(int fs, double disfac);
 	/// edge length of outflank cube
 	int ofEdge;
 	/// test if given queue is full
@@ -454,40 +456,47 @@ void BRouter::setRouting(Pack* p){
 		return;
 	}
 
-	// if minimal orthant is not congested exit (go minimal)
-	if (minfree(p))
-		return;
+	// compute priority for minimal routing
+	vector<int> mindirs=routedirs(p);
+	int minfs=0;
+	for(int i=0; i<(int) mindirs.size(); ++i)
+		minfs+=freeSpace[1+2*i];
+	double MINpr=prior(minfs, 1.0);
 
-	int OFdist=INT_MAX; // distance using OF
-	int CQRdist=INT_MAX; // distance using CQR
+	// if minimal orthant is not congested exit (go minimal)
+	//if (minfree(p))
+	//	return;
+
+	double OFpr=0.0; // priority using OF
+	double CQRpr=0.0; // priority using CQR
 
 	// choose best OF midpoint
 	int mid=-1;
 	if(outflank)
-		mid=chooseOFmid(p, &OFdist);
+		mid=chooseOFmid(p, &OFpr);
 
 	// choose best orthant for CQR
 	int ort=-1;
 	if(cqr)
-		ort=chooseCQRdirs(p, &CQRdist);
+		ort=chooseCQRdirs(p, &CQRpr);
 
-	// if no space on alternate routes, exit (keep going minimal)
-	if (CQRdist==INT_MAX && OFdist==INT_MAX)
+	// if alternate routes worse than minimal, then go minimal
+	if (CQRpr<=MINpr && OFpr<=MINpr)
 		return;
 
-	// choose the best (shortest path) between OF and CQR paths
-	if(CQRdist<OFdist)
+	// otherwise choose the best between OF and CQR paths
+	if(CQRpr>OFpr)
 		setCQRdirs(p,ort);
 	else
 		setOFmidpoint(p,mid);
 }
 
-int BRouter::chooseOFmid(Pack* p, int* ofdist){
+int BRouter::chooseOFmid(Pack* p, double* ofpr){
 	vector<int> mids;
-	// choose the admissible midpoint with maximum free space
+	int mindis=distance2(addr, p->getDst());
+	// choose the admissible midpoint with maximum priority
+	double mp=0.0;
 	int md=-1; // midpoint
-	int mf=0;  // free slots
-	int mind=INT_MAX; // minimum distance
 	for (int ort=0; ort<(1<<dim); ++ort){
 		// compute candidate midpoint
 		mids.push_back(OFMid(p,ort));
@@ -517,16 +526,23 @@ int BRouter::chooseOFmid(Pack* p, int* ofdist){
 		if (!an)
 			continue;
 
-		// mid is admissible, look at its free slots and distance
-		if((dis<mind && f>0)||(dis==mind && f>mf)){
+		// mid is admissible, look at its priority
+		double df=((double) dis)/((double) mindis);
+		double lp=prior(f,df);
+		if(lp>mp){
+			mp=lp;
 			md=mids[ort];
-			mf=f;
-			mind=dis;
 		}
 	}
-	*ofdist=mind; // save its distance
+	*ofpr=mp; // save its priority
 	// use the computed midpoint
 	return md;
+}
+
+double BRouter::prior(int fs, double disfac){
+	return (double) fs/disfac;
+	// return (double) fs + 25.0/((double) dist);
+	// return ((double) fs)/((double) dist);
 }
 
 int BRouter::distance3(int asource, int amid, int adest){
@@ -546,7 +562,7 @@ int BRouter::distance2(int asource, int adest){
 	return dis;
 }
 
-int BRouter::chooseCQRdirs(Pack* p, int* cqrdist){
+int BRouter::chooseCQRdirs(Pack* p, double* pr){
 	// get coordinates
 	vector<int> dest=addr2coor(p->getDst());
 	vector<int> source=addr2coor(addr);
@@ -564,7 +580,7 @@ int BRouter::chooseCQRdirs(Pack* p, int* cqrdist){
 		dists[2*i]=d;
 		dists[2*i+1]=kCoor[i]-d;
 	}
-	// distance and occupancy for each orthant
+	// distance and free slots for each orthant
 	vector<int> distorth(1<<dim, 0);
 	vector<int> fslorth(1<<dim, 0);
 	for (int i=0; i<(1<<dim); ++i){
@@ -575,16 +591,19 @@ int BRouter::chooseCQRdirs(Pack* p, int* cqrdist){
 				fslorth[i]+=fsl[2*d+o[d]];
 		}
 	}
-	// select orthant for routing
+	// select orthant for routing (the one with maximum priority)
 	int ort=-1;
-	int mindist=INT_MAX;
+	int mindis=distance2(addr, p->getDst());
+	double pp=0;
 	for (int i=0; i<(1<<dim); ++i){
-		if (distorth[i]<mindist && fslorth[i]>0){
+		double df=((double) distorth[i])/((double) mindis);
+		double lp=prior(fslorth[i], df);
+		if (lp>pp){
 			ort=i;
-			mindist=distorth[i];
+			pp=lp;
 		}
 	}
-	*cqrdist=mindist;
+	*pr=pp; // save priority
 	return ort;
 }
 
@@ -593,20 +612,25 @@ void BRouter::routePack(Pack* p){
 	// if just injected consider derouting the packet (if OutFlank or CQR)
 	if (p->getQueue()==-1)
 		setRouting(p);
-	// try and enqueue in an adaptive queue along some (random) minimal path.
+	// try and enqueue in the most free adaptive queue
 	// Note: bubble paper prefers to continue along the same direction
 	vector<int> dirs=routedirs(p);
-	int n=dirs.size();
-	int ran=intrand(n);
-	for(int d=0; d<n; ++d){
-		int q=1+2*dirs[(ran+d)%n];
-		if (!full(q)){ // if one free adaptive queue is found, insert the packet
-			enqueue(p,q);
-			return;
+	int fs=0;
+	int q=-1;
+	for(int d=0; d<(int) dirs.size(); ++d){
+		int lq=1+2*dirs[d];
+		int lfs=freeSpace[lq];
+		if (lfs>fs){
+			fs=lfs;
+			q=lq;
 		}
 	}
+	if (q!=-1){
+		enqueue(p,q);
+		return;
+	}
 	// if all adaptive queues are full, try the DOR escape one
-	int q=2*dirs[0];
+	q=2*dirs[0];
 	// if full drop the packet, if just injected (i.e., it comes from a
 	// queue different from q) also requires a bubble
 	if (full(q) || (!bubble(q) && p->getQueue()!=q) ) {

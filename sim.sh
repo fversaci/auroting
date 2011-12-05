@@ -6,11 +6,11 @@ PROCS=${1:-$DEFPROCS}  # set processors number to $1 if set, to DEFPROCS otherwi
 ##CONFS=(Uniform Butterfly Transposition)
 
 
-CONFS[${#CONFS[*]}]='Uniform'
+#CONFS[${#CONFS[*]}]='Uniform'
 CONFS[${#CONFS[*]}]='Butterfly'
-CONFS[${#CONFS[*]}]='Bitcomplement'
-CONFS[${#CONFS[*]}]='Transposition'
-CONFS[${#CONFS[*]}]='Tornado'
+#CONFS[${#CONFS[*]}]='Bitcomplement'
+#CONFS[${#CONFS[*]}]='Transposition'
+#CONFS[${#CONFS[*]}]='Tornado'
 #CONFS[${#CONFS[*]}]='Local'
 
 # delete old simulations files
