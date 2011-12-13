@@ -21,7 +21,7 @@
         </items>
       </items>
       <items xsi:type="scave:Group" name="time for hop">
-        <items xsi:type="scave:Add" filterPattern="attr:configname(Butterfly) AND attr:dinj(0.7)  AND attr:delta(0.55)  " type="VECTOR"/>
+        <items xsi:type="scave:Add" filterPattern="attr:configname(Butterfly) AND attr:delta(0.8)  AND attr:alg(0) " type="VECTOR"/>
         <items xsi:type="scave:Apply" operation="aggregator">
           <params name="function" value="average"/>
           <groupBy>iterationvars</groupBy>

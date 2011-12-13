@@ -73,8 +73,10 @@ private:
 	int chooseCQRdirs(Pack* p, double* pr);
 	/// choose OF midpoint (ofdist set to distance through the midpoint)
 	int chooseOFmid(Pack* p, double* pr);
-	/// computes priority of a path as function of free slots and distance lenghtening (proposed/minimal)
-	double prior(int fs, double disfac);
+	/** computes priority of a path as function distance lenghtening (proposed/minimal)
+	 *  and the admissible direction with most free slots
+	**/
+	double prior(int dirout, double disfac);
 	/// edge length of outflank cube
 	int ofEdge;
 	/// test if given queue is full
@@ -121,6 +123,8 @@ private:
 	void schedTO();
 	/// compute a possible midpoint for outflanking along orthant ort
     int OFMid(Pack* p, int ort);
+    /// computes max free slots among possible routings
+    int maxfreeslots();
 protected:
 	virtual void handleMessage(cMessage *msg);
 	virtual void initialize();
@@ -444,6 +448,23 @@ bool BRouter::minfree(Pack* p){
 	return (adapfree>=1);
 }
 
+int BRouter::maxfreeslots()
+{
+    // compute the maximal free slots available for a routing
+    int maxfs = 0;
+    for(int d = 0;d < dim;++d){
+        int pos = freeSpace[4 * d + 1]; // d+ adaptive
+        int neg = freeSpace[4 * d + 3]; // d- adaptive
+        if(pos > neg)
+            maxfs += pos;
+
+        else
+            maxfs += neg;
+
+    }
+    return maxfs;
+}
+
 void BRouter::setRouting(Pack* p){
 	// if destination is too close return false?
 	// ............
@@ -456,12 +477,19 @@ void BRouter::setRouting(Pack* p){
 		return;
 	}
 
-	// compute priority for minimal routing
-	vector<int> mindirs=routedirs(p);
-	int minfs=0;
-	for(int i=0; i<(int) mindirs.size(); ++i)
-		minfs+=freeSpace[1+2*i];
-	double MINpr=prior(minfs, 1.0);
+    // compute priority for minimal routing
+    vector<int> mindirs = minimal(addr, p->getDst());
+    int fsofmin = -1; // free slots of minimal routing
+    int dirout=-1;
+    for(int i = 0; i < (int)(mindirs.size()); ++i){
+    	int lfs = freeSpace[1 + 2 * mindirs[i]];
+        if (lfs>fsofmin){
+        	fsofmin=lfs;
+        	dirout=mindirs[i];
+        }
+    }
+
+	double MINpr=prior(dirout, 1.0);
 
 	// if minimal orthant is not congested exit (go minimal)
 	//if (minfree(p))
@@ -492,34 +520,38 @@ void BRouter::setRouting(Pack* p){
 }
 
 int BRouter::chooseOFmid(Pack* p, double* ofpr){
-	vector<int> mids;
 	int mindis=distance2(addr, p->getDst());
 	// choose the admissible midpoint with maximum priority
 	double mp=0.0;
 	int md=-1; // midpoint
 	for (int ort=0; ort<(1<<dim); ++ort){
 		// compute candidate midpoint
-		mids.push_back(OFMid(p,ort));
+		int candmid=OFMid(p,ort);
 		// at least a non-minimal dir in the first path
-		vector<int> mindirs=minimal(addr, mids[ort]);
+		vector<int> middirs=minimal(addr, candmid);
 		bool an=false; // at least one non-minimal direction?
-		int f=0; // free slots on adaptive queues
-		int dis=distance3(addr, mids[ort], p->getDst());  // distance through the candidate midpoint
-		for(int i=0; i<(int) mindirs.size(); ++i){
-			int d=mindirs[i]/2;
-			int dir=mindirs[i]%2;
-			f += freeSpace[2*mindirs[i]+1];
-			if (!isinminimal(p,d,dir))
+		int mfs=-1; // max free slots on an adaptive queue
+		int dirout=-1; // dir of max free slots
+		int dis=distance3(addr, candmid, p->getDst());  // distance through the candidate midpoint
+		for(int i=0; i<(int) middirs.size(); ++i){
+			int lfs=freeSpace[2*middirs[i]+1];
+			if (lfs>mfs){
+				mfs=lfs;
+				dirout=middirs[i];
+			}
+			int d=middirs[i]/2;
+			int dirbit=middirs[i]%2;
+			if (!isinminimal(p,d,dirbit))
 				an=true;
 		}
 		if (!an)
 			continue;
 		// at least a non-minimal dir in the second path
-		mindirs=minimal(mids[ort], p->getDst());
+		middirs=minimal(candmid, p->getDst());
 		an=false; // at least one non-minimal direction?
-		for(int i=0; i<(int) mindirs.size(); ++i){
-			int d=mindirs[i]/2;
-			int dir=mindirs[i]%2;
+		for(int i=0; i<(int) middirs.size(); ++i){
+			int d=middirs[i]/2;
+			int dir=middirs[i]%2;
 			if (!isinminimal(p,d,dir))
 				an=true;
 		}
@@ -527,11 +559,11 @@ int BRouter::chooseOFmid(Pack* p, double* ofpr){
 			continue;
 
 		// mid is admissible, look at its priority
-		double df=((double) dis)/((double) mindis);
-		double lp=prior(f,df);
+		double disfac=((double) dis)/((double) mindis);
+		double lp=prior(dirout,disfac);
 		if(lp>mp){
 			mp=lp;
-			md=mids[ort];
+			md=candmid;
 		}
 	}
 	*ofpr=mp; // save its priority
@@ -539,8 +571,27 @@ int BRouter::chooseOFmid(Pack* p, double* ofpr){
 	return md;
 }
 
-double BRouter::prior(int fs, double disfac){
-	return (double) fs/disfac;
+double BRouter::prior(int dirout, double disfac){
+	int fs=freeSpace[1+2*dirout];
+	if (fs==0)
+		return 0.0;
+	// compute variance
+	int fssum=0;
+	double maxvar=0.25 * ((double)par("AdapQueueSize")*(double)par("AdapQueueSize"));
+	for (int dir=0; dir<2*dim; ++dir)
+		fssum+=freeSpace[1+2*dir];
+	--fssum;
+	double fsmean=((double) fssum)/(2.0*dim);
+	int fssqsum=0;
+	for (int dir=0; dir<2*dim; ++dir){
+		int lfs=freeSpace[1+2*dir];
+		if (dir==dirout)
+			--lfs;
+		fssqsum+=lfs*lfs;
+	}
+	double fsvar=((double)fssqsum)/(2.0*dim)-fsmean*fsmean;
+	double fsfac=1.0-fsvar/maxvar;
+	return (double) fsfac + 1.2/disfac;
 	// return (double) fs + 25.0/((double) dist);
 	// return ((double) fs)/((double) dist);
 }
@@ -582,22 +633,27 @@ int BRouter::chooseCQRdirs(Pack* p, double* pr){
 	}
 	// distance and free slots for each orthant
 	vector<int> distorth(1<<dim, 0);
-	vector<int> fslorth(1<<dim, 0);
+	vector<int> fslorth(1<<dim, -1);
+	vector<int> dirout(1<<dim, -1);
 	for (int i=0; i<(1<<dim); ++i){
 		vector<int> o=ind2orth(i);
 		for(int d=0; d<dim; ++d){
 			distorth[i]+=dists[2*d+o[d]];
-			if(dists[2*d+o[d]!=0]) // consider only directions that will be used
-				fslorth[i]+=fsl[2*d+o[d]];
+			if(dists[2*d+o[d]!=0]){ // consider only directions that will be used
+				int lfs=fsl[2*d+o[d]];
+				if (lfs>fslorth[i])
+				fslorth[i]=fsl[2*d+o[d]];
+				dirout[i]=2*d+o[d];
+			}
 		}
 	}
 	// select orthant for routing (the one with maximum priority)
 	int ort=-1;
 	int mindis=distance2(addr, p->getDst());
-	double pp=0;
+	double pp=0.0;
 	for (int i=0; i<(1<<dim); ++i){
 		double df=((double) distorth[i])/((double) mindis);
-		double lp=prior(fslorth[i], df);
+		double lp=prior(dirout[i], df);
 		if (lp>pp){
 			ort=i;
 			pp=lp;

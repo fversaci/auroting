@@ -7,14 +7,15 @@ PROCS=${1:-$DEFPROCS}  # set processors number to $1 if set, to DEFPROCS otherwi
 
 
 #CONFS[${#CONFS[*]}]='Uniform'
-CONFS[${#CONFS[*]}]='Butterfly'
+#CONFS[${#CONFS[*]}]='Butterfly'
 #CONFS[${#CONFS[*]}]='Bitcomplement'
 #CONFS[${#CONFS[*]}]='Transposition'
 #CONFS[${#CONFS[*]}]='Tornado'
 #CONFS[${#CONFS[*]}]='Local'
+CONFS[${#CONFS[*]}]='Test'
 
 # delete old simulations files
-find results/ \( -name '*.sca' -o -name '*.vec' -o -name '*.vci' \) -delete
+#find results/ \( -name '*.sca' -o -name '*.vec' -o -name '*.vci' \) -delete
 
 for CO in ${CONFS[*]}; do
 
