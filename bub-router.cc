@@ -81,6 +81,8 @@ private:
 	int ofEdge;
 	/// test if given queue is full
 	inline bool full(int q);
+	/// variance of free space if chosen a direction to route into
+	double fsvariance(int dirout);
 	/// test if given queue would leave a bubble after an insertion
 	inline bool bubble(int q);
 	/// send NAK to a packet
@@ -571,13 +573,9 @@ int BRouter::chooseOFmid(Pack* p, double* ofpr){
 	return md;
 }
 
-double BRouter::prior(int dirout, double disfac){
-	int fs=freeSpace[1+2*dirout];
-	if (fs==0)
-		return 0.0;
+double BRouter::fsvariance(int dirout){
 	// compute variance
 	int fssum=0;
-	double maxvar=0.25 * ((double)par("AdapQueueSize")*(double)par("AdapQueueSize"));
 	for (int dir=0; dir<2*dim; ++dir)
 		fssum+=freeSpace[1+2*dir];
 	--fssum;
@@ -590,10 +588,29 @@ double BRouter::prior(int dirout, double disfac){
 		fssqsum+=lfs*lfs;
 	}
 	double fsvar=((double)fssqsum)/(2.0*dim)-fsmean*fsmean;
-	double fsfac=1.0-fsvar/maxvar;
-	return (double) fsfac + 1.2/disfac;
-	// return (double) fs + 25.0/((double) dist);
-	// return ((double) fs)/((double) dist);
+	return fsvar;
+}
+
+double BRouter::prior(int dirout, double disfac){
+	int fs=freeSpace[1+2*dirout];
+	if (fs==0)
+		return 0.0;
+	// compute minimum obtainable variance
+	double minvar=0.25 * ((double)par("AdapQueueSize")*(double)par("AdapQueueSize"));;
+	for(int i=0; i<2*dim; ++i){
+		double lv=fsvariance(i);
+		if (lv<minvar)
+			minvar=lv;
+	}
+	double fsvar=fsvariance(dirout);
+	double fsfac;
+	if (minvar<1e-3)
+		fsfac=1.0;
+	else
+		fsfac=minvar/fsvar;
+	// cout << fsfac << " " << 1.0/disfac << endl;
+	// return fsfac + 1.0/disfac;
+	return fsfac/disfac;
 }
 
 int BRouter::distance3(int asource, int amid, int adest){
