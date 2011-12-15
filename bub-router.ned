@@ -24,6 +24,7 @@ simple BRouter
         int InOutQueueSize; // size of queues to and from the CPU
         int algorithm = default(0); // 0=plain bubble, 1=outflank, 2=CQR, 3=OF&CQR
         int ofEdge = default(2); // Edge of outflank cube
+        double jolly = default(1.0); // jolly parameter for simulations 
     @display("i=block/routing");
     gates:
         inout inject;

@@ -166,6 +166,15 @@ vector<int> Generator::chooseDsts(){
 		}
 		return r;
 	}
+	// QCD - half of first neighbors (3 nodes in 3 dim)
+	if (commPatt==5){
+		for (int d=0; d<dim; ++d){
+			vector<int> me=addr2coor(addr);
+			me[d]=(me[d]+1+kCoor[d])%kCoor[d];
+			r.push_back(coor2addr(me));
+		}
+		return r;
+	}
 	// nodes at distance <= 2 (24 nodes in 3 dim)
 	if (commPatt==2){
 		// points along the axes -- num=(4*dim)

@@ -74,15 +74,15 @@ private:
 	/// choose OF midpoint (ofdist set to distance through the midpoint)
 	int chooseOFmid(Pack* p, double* pr);
 	/** computes priority of a path as function distance lenghtening (proposed/minimal)
-	 *  and the admissible direction with most free slots
+	 *  and free slots
 	**/
-	double prior(int dirout, double disfac);
+	double prior(int fs, double disfac);
 	/// edge length of outflank cube
 	int ofEdge;
 	/// test if given queue is full
 	inline bool full(int q);
 	/// variance of free space if chosen a direction to route into
-	double fsvariance(int dirout);
+	double fsvariance(vector<int> dirsout);
 	/// test if given queue would leave a bubble after an insertion
 	inline bool bubble(int q);
 	/// send NAK to a packet
@@ -127,6 +127,8 @@ private:
     int OFMid(Pack* p, int ort);
     /// computes max free slots among possible routings
     int maxfreeslots();
+    /// jolly parameter
+    double jolly;
 protected:
 	virtual void handleMessage(cMessage *msg);
 	virtual void initialize();
@@ -154,6 +156,7 @@ void BRouter::initialize(){
 		freeSpace[2*i+1] = par("AdapQueueSize");
 	}
 	ioqsize = par("InOutQueueSize");
+	jolly = par("jolly");
 	addr = getParentModule()->par("addr");
 	kCoor.assign(3,0);
 	kCoor[0] = getParentModule()->getParentModule()->par("kX");
@@ -479,19 +482,15 @@ void BRouter::setRouting(Pack* p){
 		return;
 	}
 
-    // compute priority for minimal routing
+    // compute costs for minimal routing
     vector<int> mindirs = minimal(addr, p->getDst());
-    int fsofmin = -1; // free slots of minimal routing
-    int dirout=-1;
+    int fsofmin = 0; // free slots of minimal routing
     for(int i = 0; i < (int)(mindirs.size()); ++i){
     	int lfs = freeSpace[1 + 2 * mindirs[i]];
-        if (lfs>fsofmin){
-        	fsofmin=lfs;
-        	dirout=mindirs[i];
-        }
+    	fsofmin+=lfs;
     }
 
-	double MINpr=prior(dirout, 1.0);
+	double MINpr=prior(fsofmin, 1.0);
 
 	// if minimal orthant is not congested exit (go minimal)
 	//if (minfree(p))
@@ -532,15 +531,11 @@ int BRouter::chooseOFmid(Pack* p, double* ofpr){
 		// at least a non-minimal dir in the first path
 		vector<int> middirs=minimal(addr, candmid);
 		bool an=false; // at least one non-minimal direction?
-		int mfs=-1; // max free slots on an adaptive queue
-		int dirout=-1; // dir of max free slots
+		int mfs=0; // free slots on an adaptive queue
 		int dis=distance3(addr, candmid, p->getDst());  // distance through the candidate midpoint
 		for(int i=0; i<(int) middirs.size(); ++i){
 			int lfs=freeSpace[2*middirs[i]+1];
-			if (lfs>mfs){
-				mfs=lfs;
-				dirout=middirs[i];
-			}
+			mfs+=lfs;
 			int d=middirs[i]/2;
 			int dirbit=middirs[i]%2;
 			if (!isinminimal(p,d,dirbit))
@@ -562,7 +557,7 @@ int BRouter::chooseOFmid(Pack* p, double* ofpr){
 
 		// mid is admissible, look at its priority
 		double disfac=((double) dis)/((double) mindis);
-		double lp=prior(dirout,disfac);
+		double lp=prior(mfs,disfac);
 		if(lp>mp){
 			mp=lp;
 			md=candmid;
@@ -573,44 +568,36 @@ int BRouter::chooseOFmid(Pack* p, double* ofpr){
 	return md;
 }
 
-double BRouter::fsvariance(int dirout){
+double BRouter::fsvariance(vector<int> dirsout){
 	// compute variance
 	int fssum=0;
 	for (int dir=0; dir<2*dim; ++dir)
 		fssum+=freeSpace[1+2*dir];
 	--fssum;
 	double fsmean=((double) fssum)/(2.0*dim);
-	int fssqsum=0;
+	double fssqsum=0.0;
+	vector<double> fsd(2*dim,0.0);
 	for (int dir=0; dir<2*dim; ++dir){
-		int lfs=freeSpace[1+2*dir];
-		if (dir==dirout)
-			--lfs;
-		fssqsum+=lfs*lfs;
+		fsd[dir]=freeSpace[1+2*dir];
+	}
+	double den=0.0;
+	for (int i=0; i<(int) fsd.size(); ++i)
+		den+=fsd[i];
+	for (int i=0; i<(int) fsd.size(); ++i){
+		fsd[i]-=fsd[i]/den;
+		fssqsum+=fsd[i]*fsd[i];
 	}
 	double fsvar=((double)fssqsum)/(2.0*dim)-fsmean*fsmean;
 	return fsvar;
 }
 
-double BRouter::prior(int dirout, double disfac){
-	int fs=freeSpace[1+2*dirout];
+double BRouter::prior(int fs, double disfac){
 	if (fs==0)
 		return 0.0;
-	// compute minimum obtainable variance
-	double minvar=0.25 * ((double)par("AdapQueueSize")*(double)par("AdapQueueSize"));;
-	for(int i=0; i<2*dim; ++i){
-		double lv=fsvariance(i);
-		if (lv<minvar)
-			minvar=lv;
-	}
-	double fsvar=fsvariance(dirout);
-	double fsfac;
-	if (minvar<1e-3)
-		fsfac=1.0;
-	else
-		fsfac=minvar/fsvar;
-	// cout << fsfac << " " << 1.0/disfac << endl;
-	// return fsfac + 1.0/disfac;
-	return fsfac/disfac;
+	int maxfs=maxfreeslots();
+	double fsfac=((double) fs)/((double) maxfs);
+	// return fsfac/disfac;
+	return fsfac+jolly/disfac;
 }
 
 int BRouter::distance3(int asource, int amid, int adest){
@@ -650,17 +637,13 @@ int BRouter::chooseCQRdirs(Pack* p, double* pr){
 	}
 	// distance and free slots for each orthant
 	vector<int> distorth(1<<dim, 0);
-	vector<int> fslorth(1<<dim, -1);
-	vector<int> dirout(1<<dim, -1);
+	vector<int> fslorth(1<<dim, 0);
 	for (int i=0; i<(1<<dim); ++i){
 		vector<int> o=ind2orth(i);
 		for(int d=0; d<dim; ++d){
 			distorth[i]+=dists[2*d+o[d]];
 			if(dists[2*d+o[d]!=0]){ // consider only directions that will be used
-				int lfs=fsl[2*d+o[d]];
-				if (lfs>fslorth[i])
-				fslorth[i]=fsl[2*d+o[d]];
-				dirout[i]=2*d+o[d];
+				fslorth[i]+=fsl[2*d+o[d]];
 			}
 		}
 	}
@@ -670,7 +653,7 @@ int BRouter::chooseCQRdirs(Pack* p, double* pr){
 	double pp=0.0;
 	for (int i=0; i<(1<<dim); ++i){
 		double df=((double) distorth[i])/((double) mindis);
-		double lp=prior(dirout[i], df);
+		double lp=prior(fslorth[i], df);
 		if (lp>pp){
 			ort=i;
 			pp=lp;
