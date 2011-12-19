@@ -166,7 +166,7 @@ vector<int> Generator::chooseDsts(){
 		}
 		return r;
 	}
-	// QCD - half of first neighbors (3 nodes in 3 dim)
+	// half of first neighbors (3 nodes in 3 dim)
 	if (commPatt==5){
 		for (int d=0; d<dim; ++d){
 			vector<int> me=addr2coor(addr);

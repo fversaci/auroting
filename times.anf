@@ -68,7 +68,9 @@
       </items>
       <items xsi:type="scave:Group" name="bitcomplement">
         <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Test)"/>
-        <items xsi:type="scave:BarChart" name="test"/>
+        <items xsi:type="scave:BarChart" name="test">
+          <groupByFields>replication</groupByFields>
+        </items>
       </items>
     </datasets>
   </datasets>

@@ -482,12 +482,11 @@ void BRouter::setRouting(Pack* p){
 		return;
 	}
 
-    // compute costs for minimal routing
+    // compute free slots for minimal routing
     vector<int> mindirs = minimal(addr, p->getDst());
     int fsofmin = 0; // free slots of minimal routing
     for(int i = 0; i < (int)(mindirs.size()); ++i){
-    	int lfs = freeSpace[1 + 2 * mindirs[i]];
-    	fsofmin+=lfs;
+    	fsofmin += freeSpace[1 + 2 * mindirs[i]];
     }
 
 	double MINpr=prior(fsofmin, 1.0);
@@ -642,7 +641,7 @@ int BRouter::chooseCQRdirs(Pack* p, double* pr){
 		vector<int> o=ind2orth(i);
 		for(int d=0; d<dim; ++d){
 			distorth[i]+=dists[2*d+o[d]];
-			if(dists[2*d+o[d]!=0]){ // consider only directions that will be used
+			if(dists[2*d+o[d]]!=0){ // consider only directions that will be used
 				fslorth[i]+=fsl[2*d+o[d]];
 			}
 		}
