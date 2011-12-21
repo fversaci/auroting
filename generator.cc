@@ -166,13 +166,11 @@ vector<int> Generator::chooseDsts(){
 		}
 		return r;
 	}
-	// half of first neighbors (3 nodes in 3 dim)
+	// right neighbor
 	if (commPatt==5){
-		for (int d=0; d<dim; ++d){
-			vector<int> me=addr2coor(addr);
-			me[d]=(me[d]+1+kCoor[d])%kCoor[d];
-			r.push_back(coor2addr(me));
-		}
+		vector<int> me=addr2coor(addr);
+		me[0]=(me[0]+1+kCoor[0])%kCoor[0];
+		r.push_back(coor2addr(me));
 		return r;
 	}
 	// nodes at distance <= 2 (24 nodes in 3 dim)

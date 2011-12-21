@@ -76,7 +76,7 @@ private:
 	/** computes priority of a path as function distance lenghtening (proposed/minimal)
 	 *  and free slots
 	**/
-	double prior(int fs, double disfac);
+	double prior(double fs, double disfac);
 	/// edge length of outflank cube
 	int ofEdge;
 	/// test if given queue is full
@@ -101,6 +101,12 @@ private:
 	vector<int> minimal(int asource, int adest);
 	/// returns the admissible directions
 	vector<int> routedirs(Pack* p);
+	/// compute ISet
+	vector<int> ISet(Pack* p);
+	/// compute MSet
+	vector<int> MSet(Pack* p);
+	/// flip a direction
+	int flip(int dir);
 	/// is direction dir (\in {0,1}) for dimension d among the ones returned by "minimal"?
 	bool isinminimal(Pack* p, int d, int dir);
 	/// convert from int address to (x,y,z) coordinates
@@ -123,9 +129,9 @@ private:
 	TO* tom;
 	/// Schedule timeout
 	void schedTO();
-	/// compute a possible midpoint for outflanking along orthant ort
-    int OFMid(Pack* p, int ort);
-    /// computes max free slots among possible routings
+	/// compute a possible midpoint for outflanking
+    int OFMid(Pack* p, vector<int> nout, vector<int> nin, vector<int> nhalf);
+    /// computes max free slots along a direction
     int maxfreeslots();
     /// jolly parameter
     double jolly;
@@ -415,17 +421,37 @@ void BRouter::enqueue(Pack* p, int q){
 	--freeSpace[q];
 }
 
-int BRouter::OFMid(Pack* p, int ort){
+int BRouter::OFMid(Pack* p, vector<int> nout, vector<int> nin, vector<int> nhalf){
     // compute intermediate destination
-    vector<int> desdir=ind2orth(ort);
-    vector<int> mid(dim, 0); // midpoint
+    vector<int> mid=coor; // midpoint
     vector<int> endp = addr2coor(p->getDst()); // final destination
-    for(int d = 0; d<dim; ++d){
-    	int sign = (desdir[d]==0?1:-1);
-    	if(isinminimal(p,d,desdir[d]))
-    		mid[d] = (endp[d] + ofEdge * sign + kCoor[d]) % kCoor[d];
-    	else
-    		mid[d] = (coor[d] + ofEdge * sign + kCoor[d]) % kCoor[d];
+    // use non-minimal outgoing directions
+    for (int i=0; i<nout.size(); ++i){
+    	int d=nout[i]/2;
+    	int sign = ((nout[i]%2)==0?1:-1);
+    	mid[d] = (coor[d] + ofEdge * sign + kCoor[d]) % kCoor[d];
+    }
+    // use non-minimal incoming directions
+    for (int i=0; i<nin.size(); ++i){
+    	int d=nin[i]/2;
+    	int sign = ((nin[i]%2)==0?1:-1);
+    	mid[d] = (endp[d] + ofEdge * sign + kCoor[d]) % kCoor[d];
+    }
+    // compute mid-coordinates
+    for (int i=0; i<nhalf.size(); ++i){
+    	int d=nhalf[i]/2;
+    	int y=endp[d];
+    	int x=coor[d];
+    	if (x>y){ // we want y>=x
+    		int z=y;
+    		y=x;
+    		x=z;
+    	}
+    	int k=kCoor[d];
+    	int m=(x+y)/2; // x <= m <= y
+    	if (y-x>k/2)
+    		m=((x+y)%k)/2;
+    	mid[d] = m;
     }
     return coor2addr(mid);
 }
@@ -460,12 +486,10 @@ int BRouter::maxfreeslots()
     for(int d = 0;d < dim;++d){
         int pos = freeSpace[4 * d + 1]; // d+ adaptive
         int neg = freeSpace[4 * d + 3]; // d- adaptive
-        if(pos > neg)
-            maxfs += pos;
-
-        else
-            maxfs += neg;
-
+        if(pos > maxfs)
+            maxfs = pos;
+        if(neg > maxfs)
+                    maxfs = neg;
     }
     return maxfs;
 }
@@ -488,8 +512,8 @@ void BRouter::setRouting(Pack* p){
     for(int i = 0; i < (int)(mindirs.size()); ++i){
     	fsofmin += freeSpace[1 + 2 * mindirs[i]];
     }
-
-	double MINpr=prior(fsofmin, 1.0);
+    double fsav =((double) fsofmin)/((double) mindirs.size());
+	double MINpr=prior(fsav, 1.0);
 
 	// if minimal orthant is not congested exit (go minimal)
 	//if (minfree(p))
@@ -519,14 +543,106 @@ void BRouter::setRouting(Pack* p){
 		setOFmidpoint(p,mid);
 }
 
+vector<int> BRouter::ISet(Pack* p){
+	vector<int> r;
+    vector<int> endp = addr2coor(p->getDst()); // final destination
+	for (int d=0; d<dim; ++d){
+		if (coor[d]==endp[d])
+			r.push_back(2*d);
+	}
+	return r;
+}
+
+vector<int> BRouter::MSet(Pack* p){
+	vector<int> r;
+    vector<int> endp = addr2coor(p->getDst()); // final destination
+	for (int d=0; d<dim; ++d){
+		if (coor[d]!=endp[d]){
+			int pdis=(kCoor[d]+endp[d]-coor[d])%kCoor[d];
+			if (pdis<=kCoor[d]/2)
+				r.push_back(2*d);
+			else
+				r.push_back(1+2*d);
+		}
+	}
+	return r;
+}
+
+
+int BRouter::flip(int dir){
+	int d=dir/2;
+	int v=dir%2;
+	v=(v+1)%2;
+	return 2*d+v;
+}
+
 int BRouter::chooseOFmid(Pack* p, double* ofpr){
 	int mindis=distance2(addr, p->getDst());
 	// choose the admissible midpoint with maximum priority
 	double mp=0.0;
 	int md=-1; // midpoint
-	for (int ort=0; ort<(1<<dim); ++ort){
+	vector<int> none;
+	vector<int> iset=ISet(p);
+	vector<int> mset=MSet(p);
+	vector<int> points;
+	// consider nonmin-nonmin directions
+	for(int i=0; i<iset.size(); ++i){
+		vector<int> nout(1,-1);
+		nout[0]=iset[i]; // d+
+		points.push_back(OFMid(p,nout,none,none));
+		nout[0]=flip(nout[0]); // d-
+		points.push_back(OFMid(p,nout,none,none));
+	}
+	// consider min-nonmin directions
+	if(mset.size()==2) // same plane
+		for(int i=0; i<mset.size(); ++i){
+			vector<int> nout(1,-1);
+			vector<int> nin(1,-1);
+			nout[0]=flip(mset[0]);
+			nin[0]=mset[1];
+			points.push_back(OFMid(p,nout,nin,none));
+			nout[0]=flip(mset[1]);
+			nin[0]=mset[0];
+			points.push_back(OFMid(p,nout,nin,none));
+		}
+	if(mset.size()==3){ // different plane
+			vector<int> nout(1,-1);
+			vector<int> nin(1,-1);
+			vector<int> nhalf(1,-1);
+			// p1
+			nout[0]=flip(mset[0]);
+			nin[0]=mset[1];
+			nhalf[0]=mset[2];
+			points.push_back(OFMid(p,nout,nin,nhalf));
+			// p1=2
+			nout[0]=flip(mset[0]);
+			nin[0]=mset[2];
+			nhalf[0]=mset[1];
+			points.push_back(OFMid(p,nout,nin,nhalf));
+			// p3
+			nout[0]=flip(mset[1]);
+			nin[0]=mset[0];
+			nhalf[0]=mset[2];
+			points.push_back(OFMid(p,nout,nin,nhalf));
+			// p4
+			nout[0]=flip(mset[1]);
+			nin[0]=mset[2];
+			nhalf[0]=mset[0];
+			points.push_back(OFMid(p,nout,nin,nhalf));
+			// p5
+			nout[0]=flip(mset[2]);
+			nin[0]=mset[0];
+			nhalf[0]=mset[1];
+			points.push_back(OFMid(p,nout,nin,nhalf));
+			// p6
+			nout[0]=flip(mset[2]);
+			nin[0]=mset[1];
+			nhalf[0]=mset[0];
+			points.push_back(OFMid(p,nout,nin,nhalf));
+		}
+	for (int j=0; j<(int) points.size(); ++j){
 		// compute candidate midpoint
-		int candmid=OFMid(p,ort);
+		int candmid=points[j];
 		// at least a non-minimal dir in the first path
 		vector<int> middirs=minimal(addr, candmid);
 		bool an=false; // at least one non-minimal direction?
@@ -556,7 +672,8 @@ int BRouter::chooseOFmid(Pack* p, double* ofpr){
 
 		// mid is admissible, look at its priority
 		double disfac=((double) dis)/((double) mindis);
-		double lp=prior(mfs,disfac);
+		double fsav =((double) mfs)/((double) middirs.size());
+		double lp=prior(fsav,disfac);
 		if(lp>mp){
 			mp=lp;
 			md=candmid;
@@ -590,8 +707,8 @@ double BRouter::fsvariance(vector<int> dirsout){
 	return fsvar;
 }
 
-double BRouter::prior(int fs, double disfac){
-	if (fs==0)
+double BRouter::prior(double fs, double disfac){
+	if (fs==0.0)
 		return 0.0;
 	int maxfs=maxfreeslots();
 	double fsfac=((double) fs)/((double) maxfs);
@@ -652,7 +769,8 @@ int BRouter::chooseCQRdirs(Pack* p, double* pr){
 	double pp=0.0;
 	for (int i=0; i<(1<<dim); ++i){
 		double df=((double) distorth[i])/((double) mindis);
-		double lp=prior(fslorth[i], df);
+		double fsav =((double) fslorth[i])*0.333333333333333333333;
+		double lp=prior(fsav, df);
 		if (lp>pp){
 			ort=i;
 			pp=lp;
