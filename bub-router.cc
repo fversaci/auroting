@@ -135,6 +135,8 @@ private:
     int maxfreeslots();
     /// jolly parameter
     double jolly;
+    /// adaptive queues size
+    int aqs;
 protected:
 	virtual void handleMessage(cMessage *msg);
 	virtual void initialize();
@@ -157,9 +159,10 @@ BRouter::~BRouter(){
 
 void BRouter::initialize(){
 	ofEdge = par("ofEdge");
+	aqs = par("AdapQueueSize");
 	for (int i=0; i<2*dim; ++i){
 		freeSpace[2*i] = par("EscQueueSize");
-		freeSpace[2*i+1] = par("AdapQueueSize");
+		freeSpace[2*i+1] = aqs;
 	}
 	ioqsize = par("InOutQueueSize");
 	jolly = par("jolly");
@@ -710,8 +713,8 @@ double BRouter::fsvariance(vector<int> dirsout){
 double BRouter::prior(double fs, double disfac){
 	if (fs==0.0)
 		return 0.0;
-	int maxfs=maxfreeslots();
-	double fsfac=((double) fs)/((double) maxfs);
+	int maxfs=aqs-maxfreeslots();
+	double fsfac=((double) maxfs)/((double) aqs-fs+1.0);
 	// return fsfac/disfac;
 	return fsfac+jolly/disfac;
 }

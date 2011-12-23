@@ -57,6 +57,10 @@ private:
 	inline simtime_t randist(simtime_t av);
 	/// generator random distribution -- 0=deterministic, 1=exponential, 2=nomrmal(av,av/10)
 	int rantype;
+	/// destination in random permutation
+	int pdest;
+	/// init permutation
+	int init_permutation(unsigned int seed);
 protected:
 	virtual void initialize();
 	virtual void handleMessage(cMessage *msg);
@@ -120,7 +124,26 @@ void Generator::initialize() {
 	scheduleAt(simTime(),tom);
 	WATCH(count);
 	wacks = false;
+	unsigned int seed=0;
+	pdest = init_permutation(seed);
 }
+
+int Generator::init_permutation(unsigned int seed){
+	unsigned int sdp;
+	sdp=seed;
+	int n=nsize;
+	vector<int> dests(n,0);
+	for(int i=0; i<n; ++i)
+		dests[i]=i;
+	for(int i=n-1; i>0; --i){
+		int ri=rand_r(&sdp)%i;
+		int old=dests[i];
+		dests[i]=dests[ri];
+		dests[ri]=old;
+	}
+	return dests[addr];
+}
+
 
 vector<int> Generator::addr2coor(int a){
 	vector<int> r(dim,0);
@@ -166,11 +189,9 @@ vector<int> Generator::chooseDsts(){
 		}
 		return r;
 	}
-	// right neighbor
+	// permutation
 	if (commPatt==5){
-		vector<int> me=addr2coor(addr);
-		me[0]=(me[0]+1+kCoor[0])%kCoor[0];
-		r.push_back(coor2addr(me));
+		r.push_back(pdest);
 		return r;
 	}
 	// nodes at distance <= 2 (24 nodes in 3 dim)
