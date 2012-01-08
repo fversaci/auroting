@@ -124,7 +124,7 @@ void Generator::initialize() {
 	scheduleAt(simTime(),tom);
 	WATCH(count);
 	wacks = false;
-	unsigned int seed=0;
+	unsigned int seed=1;
 	pdest = init_permutation(seed);
 }
 

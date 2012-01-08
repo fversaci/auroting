@@ -8,8 +8,9 @@ PROCS=${1:-$DEFPROCS}  # set processors number to $1 if set, to DEFPROCS otherwi
 
 #CONFS[${#CONFS[*]}]='Uniform'
 #CONFS[${#CONFS[*]}]='Butterfly'
-#CONFS[${#CONFS[*]}]='Bitcomplement'
 #CONFS[${#CONFS[*]}]='Transposition'
+#CONFS[${#CONFS[*]}]='Permutation'
+#CONFS[${#CONFS[*]}]='Bitcomplement'
 #CONFS[${#CONFS[*]}]='Tornado'
 #CONFS[${#CONFS[*]}]='Local'
 CONFS[${#CONFS[*]}]='Test'
