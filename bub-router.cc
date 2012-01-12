@@ -133,8 +133,9 @@ private:
   int OFMid(Pack* p, vector<int> nout, vector<int> nin, vector<int> nhalf);
   /// computes max free slots along a direction
   int maxfreeslots();
-  /// jolly parameter
+  /// jolly parameters
   double jolly;
+  int jollyint;
   /// adaptive queues size
   int aqs;
 protected:
@@ -166,6 +167,7 @@ void BRouter::initialize(){
   }
   ioqsize = par("InOutQueueSize");
   jolly = par("jolly");
+  jollyint = par("jollyint");
   addr = getParentModule()->par("addr");
   kCoor.assign(3,0);
   kCoor[0] = getParentModule()->getParentModule()->par("kX");
@@ -810,8 +812,8 @@ void BRouter::routePack(Pack* p){
   // if full drop the packet, if just injected (i.e., it comes from a
   // queue different from q) also requires a bubble
   if (full(q) || (!bubble(q) && p->getQueue()!=q) ) {
-    // if at intermediate destination consume and reinject
-    if (p->getReinjectable()){
+    // if at intermediate destination consume and reinject (every 4 tries)
+    if (p->getReinjectable() && intrand(jollyint)==0){
       consPack(p);
       return;
     }
