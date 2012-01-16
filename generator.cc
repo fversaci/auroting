@@ -332,6 +332,8 @@ void Generator::handleMessage(cMessage *msg){
     wacks = false;
     togo.push_back(lastsent);
     delete msg;
+    if (!(tom->isScheduled()))  // reactivate message sending if queue was empty
+      sendPack();
     return;
   }
   // if ACK, delete stored message
