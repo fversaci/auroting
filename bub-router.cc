@@ -812,7 +812,7 @@ void BRouter::routePack(Pack* p){
   // if full drop the packet, if just injected (i.e., it comes from a
   // queue different from q) also requires a bubble
   if (full(q) || (!bubble(q) && p->getQueue()!=q) ) {
-    // if at intermediate destination consume and reinject (every 4 tries)
+    // if at intermediate destination consume and reinject (with probability 1/2)
     if (p->getReinjectable() && intrand(jollyint)==0){
       consPack(p);
       return;

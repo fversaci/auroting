@@ -66,13 +66,17 @@
         <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Bitcomplement)"/>
         <items xsi:type="scave:BarChart" name="bitcomplement"/>
       </items>
-      <items xsi:type="scave:Group" name="bitcomplement">
+      <items xsi:type="scave:Group" name="test">
         <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Test)"/>
         <items xsi:type="scave:BarChart" name="test"/>
+      </items>
+      <items xsi:type="scave:Group" name="permutation">
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Permutation)"/>
+        <items xsi:type="scave:BarChart" name="permutation"/>
       </items>
     </datasets>
   </datasets>
   <chartSheets>
-    <chartSheets name="default" charts="//@datasets/@datasets.0/@items.0/@items.1 //@datasets/@datasets.0/@items.1/@items.1 //@datasets/@datasets.0/@items.2/@items.2 //@datasets/@datasets.0/@items.3/@items.1 //@datasets/@datasets.0/@items.4/@items.1 //@datasets/@datasets.0/@items.5/@items.1 //@datasets/@datasets.0/@items.6/@items.1 //@datasets/@datasets.0/@items.7/@items.1 //@datasets/@datasets.0/@items.8/@items.1 //@datasets/@datasets.0/@items.9/@items.1 //@datasets/@datasets.0/@items.10/@items.1"/>
+    <chartSheets name="default" charts="//@datasets/@datasets.0/@items.0/@items.1 //@datasets/@datasets.0/@items.1/@items.1 //@datasets/@datasets.0/@items.2/@items.2 //@datasets/@datasets.0/@items.3/@items.1 //@datasets/@datasets.0/@items.4/@items.1 //@datasets/@datasets.0/@items.5/@items.1 //@datasets/@datasets.0/@items.6/@items.1 //@datasets/@datasets.0/@items.7/@items.1 //@datasets/@datasets.0/@items.8/@items.1 //@datasets/@datasets.0/@items.9/@items.1 //@datasets/@datasets.0/@items.10/@items.1 //@datasets/@datasets.0/@items.11/@items.1"/>
   </chartSheets>
 </scave:Analysis>
