@@ -591,26 +591,52 @@ int BRouter::chooseOFmid(Pack* p, double* ofpr){
   vector<int> mset=MSet(p);
   vector<int> points;
   // consider nonmin-nonmin directions
-  for(int i=0; i<iset.size(); ++i){
-    vector<int> nout(1,-1);
-    nout[0]=iset[i]; // d+
-    points.push_back(OFMid(p,nout,none,none));
-    nout[0]=flip(nout[0]); // d-
-    points.push_back(OFMid(p,nout,none,none));
-  }
+  //  for(int i=0; i<iset.size(); ++i){
+  //    vector<int> nout(1,-1);
+  //    nout[0]=iset[i]; // d+
+  //    points.push_back(OFMid(p,nout,none,none));
+  //    nout[0]=flip(nout[0]); // d-
+  //    points.push_back(OFMid(p,nout,none,none));
+  //  }
   // consider min-nonmin directions
-  if(mset.size()==2) // same plane
-    for(int i=0; i<mset.size(); ++i){
-      vector<int> nout(1,-1);
-      vector<int> nin(1,-1);
-      nout[0]=flip(mset[0]);
-      nin[0]=mset[1];
-      points.push_back(OFMid(p,nout,nin,none));
-      nout[0]=flip(mset[1]);
-      nin[0]=mset[0];
-      points.push_back(OFMid(p,nout,nin,none));
-    }
-  if(mset.size()==3){ // different plane
+  if(mset.size()==1){ // same line
+    // one forward and one shortcut
+    vector<int> nout(1,-1);
+    vector<int> nin(1,-1);
+    vector<int> nhalf(1,-1);
+    nout[0]=iset[0];
+    nin[0]=mset[0];
+    points.push_back(OFMid(p,nout,nin,none));
+    nout[0]=flip(nout[0]);
+    nhalf[0]=mset[0];
+    points.push_back(OFMid(p,nout,none,nin));
+    // one backward and one shortcut
+    nout[0]=flip(mset[0]);
+    nin[0]=iset[1];
+    points.push_back(OFMid(p,nout,nin,none));
+    nin[0]=flip(nin[0]);
+    nhalf[0]=mset[0];
+    points.push_back(OFMid(p,none,nin,nhalf));
+  }
+  else if(mset.size()==2){ // same plane
+    // XXXXXXXXXXXXXX --- check below
+    vector<int> nout(1,-1);
+    vector<int> nin(1,-1);
+    nout[0]=flip(mset[0]);
+    nin[0]=mset[1];
+    points.push_back(OFMid(p,nout,nin,none));
+    nout[0]=flip(mset[1]);
+    nin[0]=mset[0];
+    points.push_back(OFMid(p,nout,nin,none));
+    vector<int> nhalf(2,-1);
+    nhalf[0]=mset[0];
+    nhalf[1]=mset[1];
+    nout[0]=iset[0];
+    points.push_back(OFMid(p,nout,nin,nhalf));
+    nout[0]=flip(nout[0]);
+    points.push_back(OFMid(p,nout,nin,nhalf));
+  }
+  else if(mset.size()==3){ // different plane
     vector<int> nout(1,-1);
     vector<int> nin(1,-1);
     vector<int> nhalf(1,-1);
@@ -619,7 +645,7 @@ int BRouter::chooseOFmid(Pack* p, double* ofpr){
     nin[0]=mset[1];
     nhalf[0]=mset[2];
     points.push_back(OFMid(p,nout,nin,nhalf));
-    // p1=2
+    // p2
     nout[0]=flip(mset[0]);
     nin[0]=mset[2];
     nhalf[0]=mset[1];
