@@ -1,0 +1,13 @@
+# @ job_name = aurouting
+# @ job_type = parallel
+# @ initialdir = /home/versacif/aurouting
+# @ executable = /home/versacif/aurouting/para.sh
+# @ arguments = 28
+# @ error = $(job_name).$(jobid).err
+# @ output = $(job_name).$(jobid).out
+# @ notification = always
+# @ notify_user = francesco.versaci@gmail.com
+# @ class = verylong
+# @ blocking = unlimited
+# @ total_tasks = 28
+# @ queue
