@@ -18,6 +18,8 @@ private:
   void sendPack();
   /// Generate a packet
   void genPack();
+  /// Generate a packet due to an external request from genclock
+  void extgenPack();
   /// choose packet destinations
   vector<int> chooseDsts();
   /// Timeout message for sending next message
@@ -91,14 +93,16 @@ string IntToStr(int n) {
 
 void Generator::initialize() {
   cDatarateChannel* chan00 = (cDatarateChannel*) getParentModule()->gate("gate$o",0)->getChannel();
+  pn = getParentModule()->getParentModule()->par("packNum");
+  pl = getParentModule()->getParentModule()->par("packLen");
   double B = chan00->getDatarate(); // b/s
-  double L = 8.0 * par("packLen").doubleValue() * par("packNum").doubleValue();
+  double L = 8.0 * ((double) pl) * ((double) pn);
   double x = getParentModule()->getParentModule()->par("kX").doubleValue();
   double y = getParentModule()->getParentModule()->par("kY").doubleValue();
   double z = getParentModule()->getParentModule()->par("kZ").doubleValue();
   double max=x>y?x:y;
   max=max>z?max:z;
-  // surely saturate for delta <= (max/8)*(PackLen/datarate)
+  // surely saturate (under uniform traffic) for delta <= (max/8)*(PackLen/datarate)
   SimTime delta=max*.125*L/B;
 
   kCoor.assign(3,0);
@@ -113,16 +117,15 @@ void Generator::initialize() {
   if ((nsize & (nsize - 1))==0) // if power of 2 compute logarithm
     for (int ns=nsize; ns!=1; ns/=2, ++l2) ; // l2=log_2(nsize)
 
-  count = par("count");
-  rantype = par("rantype");
-  pl = par("packLen");
-  pn = par("packNum");
+  count = getParentModule()->getParentModule()->par("count");
+  rantype = getParentModule()->getParentModule()->par("rantype");
   commPatt = par("commPatt");
-  deltaG = delta / par("deltaG");
+  deltaG = delta / getParentModule()->getParentModule()->par("deltaG");
   deltaS = delta / (pn*((double) par("deltaS")));
   tom = new TO("Send a new packet timeout");
-  tog = new TO2("Generate a new packet timeout");
-  scheduleAt(simTime(),tog);
+  tog = new TO2("Generate a new burst timeout");
+  if (!(getParentModule()->getParentModule()->par("external"))) // if not external use the internal clock
+      scheduleAt(simTime(),tog);
   scheduleAt(simTime(),tom);
   WATCH(count);
   wacks = false;
@@ -307,11 +310,33 @@ void Generator::genPack(){
       togo.push_front(p);
     }
   }
-  // schedule next packet generation
+  // schedule next burst generation
   if (--count>0)
     scheduleAt(simTime()+randist(deltaG),tog);
   // scheduleAt(simTime()+exponential(deltaG),tog);
 }
+
+void Generator::extgenPack(){
+  vector<int> dsts = chooseDsts();
+  if (pn % dsts.size()!=0)
+    throw cRuntimeError("Choose a number of packets divisible by the desired destinations (%d)", dsts.size());
+  int neach=pn/dsts.size();
+  for(int i=0; i<(int) dsts.size(); ++i){
+    int dest=dsts[i];
+    string roba = "To " + IntToStr(dest);
+    for (int i=0; i<neach; ++i){
+      Pack *p = new Pack(roba.c_str());
+      p->setByteLength(pl);
+      p->setDst(dest);
+      p->setSrc(addr);
+      p->setBirthtime(simTime());
+      take(p);
+      togo.push_front(p);
+    }
+  }
+  --count; // update internal bursts counter
+}
+
 
 void Generator::sendPack(){
   if (!togo.empty() && !wacks){
@@ -364,5 +389,10 @@ void Generator::handleMessage(cMessage *msg){
     if (!(tom->isScheduled()))  // reactivate message sending if queue was empty
       sendPack();
     return;
+  }
+  if (msg->arrivedOn("newburst")){
+      delete msg;
+      extgenPack();
+      return;
   }
 }

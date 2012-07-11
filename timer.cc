@@ -38,9 +38,9 @@ void Timer::initialize(){
 	cDatarateChannel* chan00 = (cDatarateChannel*) getParentModule()->getSubmodule("node",0)->gate("gate$o",0)->getChannel();
 	B = chan00->getDatarate(); // b/s
 	lat = chan00->getDelay().dbl();
-	L = 8.0 * getParentModule()->getSubmodule("node",0)->getSubmodule("generator")->par("packLen").doubleValue();
-	count = getParentModule()->getSubmodule("node",0)->getSubmodule("generator")->par("count").doubleValue();
-	count *= getParentModule()->getSubmodule("node",0)->getSubmodule("generator")->par("packNum").doubleValue();
+	L = 8.0 * getParentModule()->par("packLen").doubleValue();
+	count = getParentModule()->par("count").doubleValue();
+	count *= getParentModule()->par("packNum").doubleValue();
 	T = L/B; // no latency
 	x = getParentModule()->par("kX").doubleValue();
 	y = getParentModule()->par("kY").doubleValue();

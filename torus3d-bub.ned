@@ -28,6 +28,18 @@ network Torus3d_bub
         int kZ = default(2);
         double band @unit(bps) = default(1 Gbps); // bandwidth
         double lat @unit(s) = default(250 ns); // latency
+        // external or internal generation clock?
+        bool external = default(false);
+        // number of bursts to generate
+        int count = default(20);
+        // number of packet to be produced per burst
+        int packNum = default(24);
+        // Packet length
+        int packLen @unit(B) = default(2 KiB);        
+        // delta to generate a new packet (in saturation units)
+        double deltaG = default(1);    
+        // generator random distribution -- 0=deterministic, 1=exponential, 2=nomrmal(av,av/10)
+        int rantype= default(0);
         @display("i=block/network2;bgb=305,284");
     types:
         channel Chan extends ned.DatarateChannel
@@ -42,6 +54,9 @@ network Torus3d_bub
         }
         timer: Timer {
             @display("p=233,206");
+        }
+        clock: Clock_gen {
+            @display("p=54,206");
         }
     connections:
         // (x,y,z) maps to x+y*kX+z*kX*kY
