@@ -23,6 +23,8 @@ simple Generator
         double deltaS = default(1);
         // communication pattern -- 0=uniform, 1,2=nodes at distance <= 1,2, 5=fixed permutation, 10=butterfly, 20=transposition, 30=tornado, 40=bitcomplement
         int commPatt = default(0);
+        // jolly bool
+        bool jolly = default(false);
         @display("i=block/source");
     gates:
         inout inject;

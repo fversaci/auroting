@@ -10,11 +10,11 @@ int main(){
   string inifile(" -f altro.ini ");
   vector<string> confs;
   confs.push_back("Butterfly");
-  confs.push_back("Uniform");
-  confs.push_back("Bitcomplement");
-  confs.push_back("Tornado");
+  // confs.push_back("Uniform");
+  // confs.push_back("Bitcomplement");
+  // confs.push_back("Tornado");
   confs.push_back("Transposition");
-  confs.push_back("Permutation");
+  // confs.push_back("Permutation");
 
   vector<int> iter(confs.size(),0);
   int tot=0;

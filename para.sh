@@ -5,4 +5,4 @@ PROCS=${1:-$DEFPROCS}  # set processors number to $1 if set, to DEFPROCS otherwi
 
 g++ -o buildmake bmake/buildmake.cc && ./buildmake > paramake
 rm altro-results/*.sca
-nice make -k -j$PROCS -f paramake
+time nice make -k -j$PROCS -f paramake 2>&1 | grep -i exit | tee errlog-`date +%F`.txt

@@ -66,6 +66,8 @@ private:
   int pdest;
   /// init permutation
   int init_permutation(unsigned int seed);
+  /// jolly bool
+  bool jolly;
 protected:
   virtual void initialize();
   virtual void handleMessage(cMessage *msg);
@@ -112,10 +114,15 @@ void Generator::initialize() {
   addr = getParentModule()->par("addr");
   coor = addr2coor(addr);
   nsize = getParentModule()->getVectorSize();
+  jolly = par("jolly");
 
   bdim=0; l2=0;
   if ((nsize & (nsize - 1))==0) // if power of 2 compute logarithm
     for (int ns=nsize; ns!=1; ns/=2, ++l2) ; // l2=log_2(nsize)
+
+  // if jolly, then do not perform the communication at diameter distance
+  if (jolly)
+      --l2;
 
   count = getParentModule()->getParentModule()->par("count");
   rantype = getParentModule()->getParentModule()->par("rantype");
