@@ -21,10 +21,12 @@ simple Generator
     parameters:
         // delta to send a new packet (in saturation units)
         double deltaS = default(1);
-        // communication pattern -- 0=uniform, 1,2=nodes at distance <= 1,2, 5=fixed permutation, 10=butterfly, 20=transposition, 30=tornado, 40=bitcomplement
+        // communication pattern -- 0=uniform, 1,2=nodes at distance <= 1,2, 5=fixed permutation, 7=alternating rows, 10=butterfly, 20=transposition, 25=3d_transpose, 30=tornado, 40=bitcomplement
         int commPatt = default(0);
         // jolly bool
         bool jolly = default(false);
+        // starting buttergly dimension (only for testing purporses)
+        int bdim = default(0);
         @display("i=block/source");
     gates:
         inout inject;

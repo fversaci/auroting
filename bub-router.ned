@@ -25,7 +25,9 @@ simple BRouter
         int algorithm = default(0); // 0=plain bubble, 1=outflank, 2=CQR, 3=OF&CQR
         int ofEdge = default(2); // Edge of outflank cube
         double jolly = default(1.0); // jolly parameter for simulations 
-        int jollyint = default(4); // integer jolly parameter for simulations 
+        double j2 = default(1.0); // another jolly parameter for simulations 
+        int jollyint = default(4); // integer jolly parameter for simulations
+        bool ofshort = default(false); // only use short deroutes in OF
     @display("i=block/routing");
     gates:
         inout inject;

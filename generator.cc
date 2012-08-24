@@ -116,13 +116,9 @@ void Generator::initialize() {
   nsize = getParentModule()->getVectorSize();
   jolly = par("jolly");
 
-  bdim=0; l2=0;
+  bdim=par("bdim"); l2=0;
   if ((nsize & (nsize - 1))==0) // if power of 2 compute logarithm
     for (int ns=nsize; ns!=1; ns/=2, ++l2) ; // l2=log_2(nsize)
-
-  // if jolly, then do not perform the communication at diameter distance
-  if (jolly)
-      --l2;
 
   count = getParentModule()->getParentModule()->par("count");
   rantype = getParentModule()->getParentModule()->par("rantype");
@@ -241,12 +237,25 @@ vector<int> Generator::chooseDsts(){
     }
     return r;
   }
+  // alternating rows: row up, row down, row up, row down
+  if (commPatt==7){
+      int d=bdim; // dimension of communication
+      int ad=(d+1)%dim; // row along ad communicate in the same direction
+      vector<int> me=addr2coor(addr);
+      if ((coor[ad]%2)==0)
+          me[d]=(me[d]+3+kCoor[d])%kCoor[d];
+      else
+          me[d]=(me[d]-3+kCoor[d])%kCoor[d];
+      r.push_back(coor2addr(me));
+      bdim=(bdim+1)%dim;
+    return r;
+  }
   // butterfly
   if (commPatt==10){
     if ((nsize & (nsize - 1))!=0) // not power of two (assuming nsize>0)
       throw cRuntimeError("Number of nodes must be a power of two for butterfly pattern");
     // for (int bdim=0; bdim<l2; ++bdim){
-    int tog=(1<<bdim); // 2^d
+    int tog=(1<<bdim); // 2^bdim
     bdim=(bdim+1)%l2;
     int des=addr;
     des ^= tog;
@@ -262,6 +271,18 @@ vector<int> Generator::chooseDsts(){
     int x=addr%sq;
     int y=addr/sq;
     int des=y+x*sq;
+    r.push_back(des);
+    return r;
+  }
+  // 3d transposition
+  if (commPatt==25){
+    if (kCoor[0]!=kCoor[1] || kCoor[0]!=kCoor[2]) // not a square number
+      throw cRuntimeError("Dimensions must have same size for 3d transposition pattern");
+    vector<int> yzx;
+    yzx.push_back(coor[1]);
+    yzx.push_back(coor[2]);
+    yzx.push_back(coor[0]);
+    int des=coor2addr(yzx);
     r.push_back(des);
     return r;
   }

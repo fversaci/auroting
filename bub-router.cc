@@ -134,10 +134,12 @@ private:
   /// computes max free slots along a direction
   int maxfreeslots();
   /// jolly parameters
-  double jolly;
+  double jolly, j2;
   int jollyint;
   /// adaptive queues size
   int aqs;
+  /// ofshort paramter
+  bool ofshort;
 protected:
   virtual void handleMessage(cMessage *msg);
   virtual void initialize();
@@ -167,7 +169,9 @@ void BRouter::initialize(){
   }
   ioqsize = par("InOutQueueSize");
   jolly = par("jolly");
+  j2 = par("j2");
   jollyint = par("jollyint");
+  ofshort = par("ofshort");
   addr = getParentModule()->par("addr");
   kCoor.assign(3,0);
   kCoor[0] = getParentModule()->getParentModule()->par("kX");
@@ -500,9 +504,6 @@ int BRouter::maxfreeslots()
 }
 
 void BRouter::setRouting(Pack* p){
-  // if destination is too close return false?
-  // ............
-
   // as default go minimal
   setmindirs(p);
 
@@ -510,6 +511,10 @@ void BRouter::setRouting(Pack* p){
   if (p->getDerouted()){
     return;
   }
+
+  // if destination is too close return false?
+  if(distance2(addr,p->getDst())<=2)
+      return;
 
   // compute free slots for minimal routing
   vector<int> mindirs = minimal(addr, p->getDst());
@@ -606,14 +611,14 @@ int BRouter::chooseOFmid(Pack* p, double* ofpr){
     vector<int> nhalf(1,-1);
     nout[0]=iset[0];
     nin[0]=mset[0];
-    points.push_back(OFMid(p,nout,nin,none));
+    if (!ofshort) points.push_back(OFMid(p,nout,nin,none));
     nout[0]=flip(nout[0]);
     nhalf[0]=mset[0];
-    points.push_back(OFMid(p,nout,none,nin));
+    points.push_back(OFMid(p,nout,none,nhalf));
     // one backward and one shortcut
     nout[0]=flip(mset[0]);
     nin[0]=iset[1];
-    points.push_back(OFMid(p,nout,nin,none));
+    if (!ofshort) points.push_back(OFMid(p,nout,nin,none));
     nin[0]=flip(nin[0]);
     nhalf[0]=mset[0];
     points.push_back(OFMid(p,none,nin,nhalf));
@@ -710,7 +715,7 @@ int BRouter::chooseOFmid(Pack* p, double* ofpr){
       md=candmid;
     }
   }
-  *ofpr=mp; // save its priority
+  *ofpr=j2*mp; // save its priority
   // use the computed midpoint
   return md;
 }

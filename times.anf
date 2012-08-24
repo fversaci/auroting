@@ -73,9 +73,17 @@
         <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Permutation)"/>
         <items xsi:type="scave:BarChart" name="permutation"/>
       </items>
+      <items xsi:type="scave:Group" name="TDTrans">
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(TDTrans)"/>
+        <items xsi:type="scave:BarChart" name="TDTrans"/>
+      </items>
+      <items xsi:type="scave:Group" name="Alterow">
+        <items xsi:type="scave:Add" filterPattern="&quot;Life Times:mean&quot; AND attr:configname(Alterow)"/>
+        <items xsi:type="scave:BarChart" name="Alterow"/>
+      </items>
     </datasets>
   </datasets>
   <chartSheets>
-    <chartSheets name="default" charts="//@datasets/@datasets.0/@items.0/@items.1 //@datasets/@datasets.0/@items.1/@items.1 //@datasets/@datasets.0/@items.2/@items.2 //@datasets/@datasets.0/@items.3/@items.1 //@datasets/@datasets.0/@items.4/@items.1 //@datasets/@datasets.0/@items.5/@items.1 //@datasets/@datasets.0/@items.6/@items.1 //@datasets/@datasets.0/@items.7/@items.1 //@datasets/@datasets.0/@items.8/@items.1 //@datasets/@datasets.0/@items.9/@items.1 //@datasets/@datasets.0/@items.10/@items.1 //@datasets/@datasets.0/@items.11/@items.1"/>
+    <chartSheets name="default" charts="//@datasets/@datasets.0/@items.0/@items.1 //@datasets/@datasets.0/@items.1/@items.1 //@datasets/@datasets.0/@items.2/@items.2 //@datasets/@datasets.0/@items.3/@items.1 //@datasets/@datasets.0/@items.4/@items.1 //@datasets/@datasets.0/@items.5/@items.1 //@datasets/@datasets.0/@items.6/@items.1 //@datasets/@datasets.0/@items.7/@items.1 //@datasets/@datasets.0/@items.8/@items.1 //@datasets/@datasets.0/@items.9/@items.1 //@datasets/@datasets.0/@items.10/@items.1 //@datasets/@datasets.0/@items.11/@items.1 //@datasets/@datasets.0/@items.12/@items.1 //@datasets/@datasets.0/@items.13/@items.1"/>
   </chartSheets>
 </scave:Analysis>
