@@ -10,8 +10,8 @@ int main(){
   string inifile(" -f altro.ini ");
   vector<string> confs;
   confs.push_back("Butterfly");
-  // confs.push_back("Transposition");
-  confs.push_back("TDTrans");
+  confs.push_back("Transposition");
+  // confs.push_back("TDTrans");
   // confs.push_back("Alterow");
   // confs.push_back("Uniform");
   // confs.push_back("Tornado");

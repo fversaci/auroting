@@ -77,6 +77,14 @@ private:
    *  and free slots
    **/
   double prior(double fs, double disfac);
+  /** computes priority of a path as function distance lenghtening (proposed/minimal)
+   *  and free slots
+   **/
+  double OFprior(double fs, double disfac);
+  /** computes priority of a path as function distance lenghtening (proposed/minimal)
+   *  and free slots
+   **/
+  double CQRprior(double fs, double disfac);
   /// edge length of outflank cube
   int ofEdge;
   /// test if given queue is full
@@ -133,6 +141,8 @@ private:
   int OFMid(Pack* p, vector<int> nout, vector<int> nin, vector<int> nhalf);
   /// computes max free slots along a direction
   int maxfreeslots();
+  /// prior wights
+  double ofpw,cqrpw;
   /// jolly parameters
   double jolly, j2;
   int jollyint;
@@ -169,6 +179,8 @@ void BRouter::initialize(){
   }
   ioqsize = par("InOutQueueSize");
   jolly = par("jolly");
+  ofpw = par("ofpw");
+  cqrpw = par("cqrpw");
   j2 = par("j2");
   jollyint = par("jollyint");
   ofshort = par("ofshort");
@@ -251,10 +263,15 @@ vector<int> BRouter::minimal(int asource, int adest){
     int d=(kCoor[i]+dest[i]-source[i])%kCoor[i]; // (N % k is not well defined if N<0 in C)
     if (d==0)
       continue;
+    int cd;
     if (d <= kCoor[i]/2)
-      r.push_back(2*i); // Coor[i]+
+      cd=2*i; // Coor[i]+
     else
-      r.push_back(2*i+1); // Coor[i]-
+      cd=2*i+1; // Coor[i]-
+    // if at the same distance in both directions, than choose one at random
+    //if (d==kCoor[i]/2 && intrand(2)==0)
+    //    ++cd;
+    r.push_back(cd);
   }
   return r;
 }
@@ -512,8 +529,8 @@ void BRouter::setRouting(Pack* p){
     return;
   }
 
-  // if destination is too close return false?
-  if(distance2(addr,p->getDst())<=2)
+  // if destination is too close return
+  if(distance2(addr,p->getDst())<2)
       return;
 
   // compute free slots for minimal routing
@@ -564,18 +581,18 @@ vector<int> BRouter::ISet(Pack* p){
 }
 
 vector<int> BRouter::MSet(Pack* p){
-  vector<int> r;
-  vector<int> endp = addr2coor(p->getDst()); // final destination
-  for (int d=0; d<dim; ++d){
-    if (coor[d]!=endp[d]){
-      int pdis=(kCoor[d]+endp[d]-coor[d])%kCoor[d];
-      if (pdis<=kCoor[d]/2)
-	r.push_back(2*d);
-      else
-	r.push_back(1+2*d);
+    vector<int> r;
+    vector<int> endp = addr2coor(p->getDst()); // final destination
+    for (int d=0; d<dim; ++d){
+        if (coor[d]!=endp[d]){
+            int pdis=(kCoor[d]+endp[d]-coor[d])%kCoor[d];
+            if (pdis<=kCoor[d]/2)
+                r.push_back(2*d);
+            else
+                r.push_back(1+2*d);
+        }
     }
-  }
-  return r;
+    return r;
 }
 
 
@@ -709,7 +726,7 @@ int BRouter::chooseOFmid(Pack* p, double* ofpr){
     // mid is admissible, look at its priority
     double disfac=((double) dis)/((double) mindis);
     double fsav =((double) mfs)/((double) middirs.size());
-    double lp=prior(fsav,disfac);
+    double lp=OFprior(fsav,disfac);
     if(lp>mp){
       mp=lp;
       md=candmid;
@@ -749,7 +766,25 @@ double BRouter::prior(double fs, double disfac){
   int maxfs=aqs-maxfreeslots();
   double fsfac=((double) maxfs)/((double) aqs-fs+1.0);
   // return fsfac/disfac;
-  return fsfac+jolly/disfac;
+  return fsfac+1.0/disfac;
+}
+
+double BRouter::OFprior(double fs, double disfac){
+  if (fs==0.0)
+    return 0.0;
+  int maxfs=aqs-maxfreeslots();
+  double fsfac=((double) maxfs)/((double) aqs-fs+1.0);
+  // return fsfac/disfac;
+  return fsfac+ofpw/disfac;
+}
+
+double BRouter::CQRprior(double fs, double disfac){
+  if (fs==0.0)
+    return 0.0;
+  int maxfs=aqs-maxfreeslots();
+  double fsfac=((double) maxfs)/((double) aqs-fs+1.0);
+  // return fsfac/disfac;
+  return fsfac+cqrpw/disfac;
 }
 
 int BRouter::distance3(int asource, int amid, int adest){
@@ -806,13 +841,13 @@ int BRouter::chooseCQRdirs(Pack* p, double* pr){
   for (int i=0; i<(1<<dim); ++i){
     double df=((double) distorth[i])/((double) mindis);
     double fsav =((double) fslorth[i])*0.333333333333333333333;
-    double lp=prior(fsav, df);
+    double lp=CQRprior(fsav, df);
     if (lp>pp){
       ort=i;
       pp=lp;
     }
   }
-  *pr=pp; // save priority
+  *pr=jolly*pp; // save priority
   return ort;
 }
 
@@ -844,7 +879,7 @@ void BRouter::routePack(Pack* p){
   // queue different from q) also requires a bubble
   if (full(q) || (!bubble(q) && p->getQueue()!=q) ) {
     // if at intermediate destination consume and reinject (with probability 1/jollyint)
-    if (p->getReinjectable() && intrand(jollyint)==0){
+    if (p->getReinjectable()){ // && intrand(jollyint)==0){
       consPack(p);
       return;
     }
