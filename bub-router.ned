@@ -26,7 +26,9 @@ simple BRouter
         int ofEdge = default(2); // Edge of outflank cube
         double jolly = default(1.0); // jolly parameter for simulations 
         double ofpw = default(1.0); // weight for OF priority 
+        double ofpw2 = default(1.0); // weight for OF priority 
         double cqrpw = default(1.0); //  weight for CQR priority
+        double j1 = default(1.0); // another jolly parameter for simulations 
         double j2 = default(1.0); // another jolly parameter for simulations 
         int jollyint = default(4); // integer jolly parameter for simulations
         bool ofshort = default(false); // only use short deroutes in OF

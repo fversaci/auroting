@@ -71,8 +71,10 @@ private:
   bool cqr;
   /// choose directions used by CQR
   int chooseCQRdirs(Pack* p, double* pr);
-  /// choose OF midpoint (ofdist set to distance through the midpoint)
-  int chooseOFmid(Pack* p, double* pr);
+  /// choose OF midpoint, phase 1 (ofdist set to distance through the midpoint)
+  int chooseOFmid1(Pack* p, double* pr);
+  /// choose OF midpoint, phase 2 (CQR-like points) (ofdist set to distance through the midpoint)
+  int chooseOFmid2(Pack* p, double* pr);
   /** computes priority of a path as function distance lenghtening (proposed/minimal)
    *  and free slots
    **/
@@ -81,6 +83,7 @@ private:
    *  and free slots
    **/
   double OFprior(double fs, double disfac);
+  double OFprior2(double fs, double disfac);
   /** computes priority of a path as function distance lenghtening (proposed/minimal)
    *  and free slots
    **/
@@ -142,9 +145,9 @@ private:
   /// computes max free slots along a direction
   int maxfreeslots();
   /// prior wights
-  double ofpw,cqrpw;
+  double ofpw,ofpw2,cqrpw;
   /// jolly parameters
-  double jolly, j2;
+  double jolly, j1, j2;
   int jollyint;
   /// adaptive queues size
   int aqs;
@@ -180,7 +183,9 @@ void BRouter::initialize(){
   ioqsize = par("InOutQueueSize");
   jolly = par("jolly");
   ofpw = par("ofpw");
+  ofpw2 = par("ofpw2");
   cqrpw = par("cqrpw");
+  j1 = par("j1");
   j2 = par("j2");
   jollyint = par("jollyint");
   ofshort = par("ofshort");
@@ -551,8 +556,22 @@ void BRouter::setRouting(Pack* p){
 
   // choose best OF midpoint
   int mid=-1;
-  if(outflank)
-    mid=chooseOFmid(p, &OFpr);
+  if(outflank){
+      double OFpr1=0.0; double OFpr2=0.0;
+      int m1=chooseOFmid1(p, &OFpr1);
+      int m2=chooseOFmid2(p, &OFpr2);
+      if(OFpr1>=j2*OFpr2)
+      {
+          mid=m1;
+          OFpr=OFpr1;
+      }
+      else
+      {
+          mid=m2;
+          OFpr=OFpr2;
+      }
+      OFpr*=j1;
+  }
 
   // choose best orthant for CQR
   int ort=-1;
@@ -603,7 +622,7 @@ int BRouter::flip(int dir){
   return 2*d+v;
 }
 
-int BRouter::chooseOFmid(Pack* p, double* ofpr){
+int BRouter::chooseOFmid1(Pack* p, double* ofpr){
   int mindis=distance2(addr, p->getDst());
   // choose the admissible midpoint with maximum priority
   double mp=0.0;
@@ -732,10 +751,114 @@ int BRouter::chooseOFmid(Pack* p, double* ofpr){
       md=candmid;
     }
   }
-  *ofpr=j2*mp; // save its priority
+  *ofpr=mp; // save its priority
   // use the computed midpoint
   return md;
 }
+
+int BRouter::chooseOFmid2(Pack* p, double* ofpr){
+    int mindis=distance2(addr, p->getDst());
+    // choose the admissible midpoint with maximum priority
+    double mp=0.0;
+    int md=-1; // midpoint
+    vector<int> midint(dim,0);  // internal midpoint coordinates
+    vector<int> midext(dim,0);  // external midpoint coordinates
+    vector<int> endp = addr2coor(p->getDst()); // final destination
+    for (int d=0; d<dim; ++d){
+        int y=endp[d];
+        int x=coor[d];
+        if (x>y){ // we want y>=x
+            int z=y;
+            y=x;
+            x=z;
+        }
+        int k=kCoor[d];
+        int m=(x+y)/2; // x <= m <= y
+        if (y-x>k/2)
+            m=((x+y)%k)/2;
+        midint[d] = m;
+        midext[d] = (m + k/2)%k;
+    }
+    // consider the 8 possible intermediate destinations
+    vector<int> points;
+    vector<int> mid(3,0);
+    mid[0]=midint[0];
+    mid[1]=midint[1];
+    mid[2]=midint[2];
+    points.push_back(coor2addr(mid));
+    mid[0]=midint[0];
+    mid[1]=midint[1];
+    mid[2]=midext[2];
+    points.push_back(coor2addr(mid));
+    mid[0]=midint[0];
+    mid[1]=midext[1];
+    mid[2]=midint[2];
+    points.push_back(coor2addr(mid));
+    mid[0]=midint[0];
+    mid[1]=midext[1];
+    mid[2]=midext[2];
+    points.push_back(coor2addr(mid));
+    mid[0]=midext[0];
+    mid[1]=midint[1];
+    mid[2]=midint[2];
+    points.push_back(coor2addr(mid));
+    mid[0]=midext[0];
+    mid[1]=midint[1];
+    mid[2]=midext[2];
+    points.push_back(coor2addr(mid));
+    mid[0]=midext[0];
+    mid[1]=midext[1];
+    mid[2]=midint[2];
+    points.push_back(coor2addr(mid));
+    mid[0]=midext[0];
+    mid[1]=midext[1];
+    mid[2]=midext[2];
+    points.push_back(coor2addr(mid));
+    // purge non admissible points
+    for (int j=0; j<(int) points.size(); ++j){
+        // consider candidate midpoint
+        int candmid=points[j];
+        // at least a non-minimal dir in the first path
+        vector<int> middirs=minimal(addr, candmid);
+        bool an=false; // at least one non-minimal direction?
+        int mfs=0; // free slots on an adaptive queue
+        int dis=distance3(addr, candmid, p->getDst());  // distance through the candidate midpoint
+        for(int i=0; i<(int) middirs.size(); ++i){
+            int lfs=freeSpace[2*middirs[i]+1];
+            mfs+=lfs;
+            int d=middirs[i]/2;
+            int dirbit=middirs[i]%2;
+            if (!isinminimal(p,d,dirbit))
+                an=true;
+        }
+        if (!an)
+            continue;
+        // at least a non-minimal dir in the second path
+        middirs=minimal(candmid, p->getDst());
+        an=false; // at least one non-minimal direction?
+        for(int i=0; i<(int) middirs.size(); ++i){
+            int d=middirs[i]/2;
+            int dir=middirs[i]%2;
+            if (!isinminimal(p,d,dir))
+                an=true;
+        }
+        if (!an)
+            continue;
+
+        // mid is admissible, look at its priority
+        double disfac=((double) dis)/((double) mindis);
+        double fsav =((double) mfs)/((double) middirs.size());
+        double lp=OFprior2(fsav,disfac);
+        if(lp>mp){
+            mp=lp;
+            md=candmid;
+        }
+    }
+    *ofpr=mp; // save its priority
+    // use the computed midpoint
+    return md;
+}
+
 
 double BRouter::fsvariance(vector<int> dirsout){
   // compute variance
@@ -776,6 +899,15 @@ double BRouter::OFprior(double fs, double disfac){
   double fsfac=((double) maxfs)/((double) aqs-fs+1.0);
   // return fsfac/disfac;
   return fsfac+ofpw/disfac;
+}
+
+double BRouter::OFprior2(double fs, double disfac){
+  if (fs==0.0)
+    return 0.0;
+  int maxfs=aqs-maxfreeslots();
+  double fsfac=((double) maxfs)/((double) aqs-fs+1.0);
+  // return fsfac/disfac;
+  return fsfac+ofpw2/disfac;
 }
 
 double BRouter::CQRprior(double fs, double disfac){
