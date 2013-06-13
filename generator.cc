@@ -304,6 +304,24 @@ vector<int> Generator::chooseDsts(){
     return r;
 
   }
+  // bitreverse
+  if (commPatt==50){
+    if ((nsize & (nsize - 1))!=0) // not power of two (assuming nsize>0)
+      throw cRuntimeError("Number of nodes must be a power of two for bitreverse pattern");
+    int n=nsize;
+    int a=addr;
+    int br=0;
+    while (n>1){
+        br<<=1;
+        int r=a%2;
+        br+=r;
+        n/=2;
+        a/=2;
+    }
+    r.push_back(br);
+    return r;
+
+  }
   // non-recognized pattern
   throw cRuntimeError("Non recognized communication pattern: %d", commPatt);
 }
