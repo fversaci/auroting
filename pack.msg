@@ -24,9 +24,9 @@ packet Pack {
     int route[5]; // intermediate destinations (0-th is the final one)
     int currDst = 0; // dst=route[currDst]
     bool derouted = false; // set to true if gets derouted by outflank
-    bool reinjectable = false; // true if just reached an intermediate destination
+    bool reinjectable = false; // set to true at IDN if you want to allow reinjections
     simtime_t birthtime; // birth time
-    int queue = -1; // 0 = A, 1 = B, 2 = C, -1 = injection queue
+    int queue = -1; // -1 = injection queue
     string displayString = "b=10,10,oval,blue";
     ByteLength = 1000;
     int cqrdir[3] = 0; // which direction in dimension i? (0=+, 1=-) -- used by CQR 

@@ -21,8 +21,8 @@ class BRouter: public cSimpleModule {
 private:
   /// number of dimensions of the torus
   static const int dim=3;
-  /// number of queues (an escape and adaptive one for each unidirectional gate)
-  static const int qn=4*dim;
+  /// number of queues (two escape ones and an adaptive one for each unidirectional gate)
+  static const int qn=6*dim;
   /// queues sizes
   unsigned int freeSpace[qn];
   /// router node coordinates
@@ -35,7 +35,7 @@ private:
   int ioqsize;
   /// consume queue
   cQueue conq;
-  /// vector queue  0=x+e, 1=x+a, 2=x-e, 3=x-a, 4=y+e, 5=y+a, 6=y-e, 7=y-a, 8=z+e, 9=z+a, 10=z-e, 11=z-a
+  /// vector queue  0=x+e, 1=x+a, 2=x-e, 3=x-a, 4=y+e, 5=y+a, 6=y-e, 7=y-a, 8=z+e, 9=z+a, 10=z-e, 11=z-a, 12=x+2e, 13=x-2e, ..., 17=z-2e
   vector<OrdPack> coda[qn];
   /// Time priority (decrements every time a new message is inserted into a queue)
   long tp;
@@ -106,6 +106,8 @@ private:
   void flushCons();
   /// send packets
   void sendPacks();
+  /// send packets from a queue
+  void sendFromQueue(int q);
   /// flush (N)ACKS and Packs
   inline void flushAll();
   /// return minimal paths from asource to adest
@@ -179,6 +181,7 @@ void BRouter::initialize(){
   for (int i=0; i<2*dim; ++i){
     freeSpace[2*i] = par("EscQueueSize");
     freeSpace[2*i+1] = aqs;
+    freeSpace[12+i] = par("EscQueueSize");
   }
   ioqsize = par("InOutQueueSize");
   jolly = par("jolly");
@@ -1005,16 +1008,24 @@ void BRouter::routePack(Pack* p){
     enqueue(p,q);
     return;
   }
-  // if all adaptive queues are full, try the DOR escape one
-  q=2*dirs[0];
+  // all adaptive queues are full, try the DOR escape ones
+  if(p->getCurrDst()==0)
+      // going to its final destination
+      q=2*dirs[0];
+  else
+      // going to an IDN
+      q=12+dirs[0];
   // if full drop the packet, if just injected (i.e., it comes from a
-  // queue different from q) also requires a bubble
+  // queue different from q) also require a bubble
   if (full(q) || (!bubble(q) && p->getQueue()!=q) ) {
     // if at intermediate destination consume and reinject (with probability 1/jollyint)
-    if (p->getReinjectable()){ // && intrand(jollyint)==0){
-      consPack(p);
-      return;
-    }
+    // NO REINJECT possible now
+    //--->
+    //if (p->getReinjectable()){ // && intrand(jollyint)==0){
+    //  consPack(p);
+    //  return;
+    //}
+    //--->
     // otherwise discard it
     sendNAK(p);
     delete p;
@@ -1049,7 +1060,7 @@ void BRouter::acceptPack(Pack* p){
   // go to next intermediate destination
   p->setCurrDst(--cd);
   p->setDst(p->getRoute(cd));
-  p->setReinjectable(true);
+  //NO REINJECT//p->setReinjectable(true);
   setmindirs(p);
   routePack(p);
 }
@@ -1107,24 +1118,36 @@ void BRouter::rcvPack(Pack* p){
     routePack(p);
 }
 
-
-void BRouter::sendPacks(){
-  for (int q=0; q<qn; ++q){
+void BRouter::sendFromQueue(int q){
     // process non empty queues
     if (!coda[q].empty()){
-      OrdPack op=coda[q].front();
-      Pack* pac=(Pack *) op.p;
-      // try and route a packet. If successful, add it to waiting[q]
-      int des=q/2;
-      if (!gate("gate$o",des)->getTransmissionChannel()->isBusy()){
-	send(pac->dup(), "gate$o", des);
-	ev << (pac->getTreeId()) <<  ": From " << addr << endl;
-	pop_heap(coda[q].begin(),coda[q].end());
-	coda[q].pop_back();
-	waiting[q][pac->getTreeId()] = op;
-      }
+        OrdPack op=coda[q].front();
+        Pack* pac=(Pack *) op.p;
+        // try and transmit a packet. If successful, add it to waiting[q]
+        int des;
+        if (q<12)
+            des=q/2;
+        else // going to an IDN
+            des=q-12;
+        if (!gate("gate$o",des)->getTransmissionChannel()->isBusy()){
+            send(pac->dup(), "gate$o", des);
+            ev << (pac->getTreeId()) <<  ": From " << addr << endl;
+            pop_heap(coda[q].begin(),coda[q].end());
+            coda[q].pop_back();
+            waiting[q][pac->getTreeId()] = op;
+        }
     }
-  }
+}
+
+void BRouter::sendPacks(){
+    for (int i=0; i<2*dim; ++i){
+        // final escape queue
+        sendFromQueue(2*i);
+        // IDN escape queue
+        sendFromQueue(12+i);
+        // adaptive queue
+        sendFromQueue(1+2*i);
+    }
 }
 
 void BRouter::flushAll(){
