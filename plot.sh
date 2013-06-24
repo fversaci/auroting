@@ -7,15 +7,37 @@ for PATT in Bitreverse Butterfly Uniform Transposition TDTrans Bitcomplement; do
     echo $PATT: $last
     step=4
     for alg in `seq 0 $((step-1))`; do
-	#echo "$PATT Alg $alg, derouted:" >> "$tmp";
-	#for n in `seq $alg $step $last`; do
-	#    #echo -n "$n: " >> "$tmp";
-	#    grep totalDerouted $PATT-$n.sca | cut -c 43- | tr -d '\n' >> "$tmp";
-	#    echo -n ", " >> "$tmp";
-	#done
-	#echo "\n" >> "$tmp";
+	# Total derouted
+	echo "$PATT Alg $alg, derouted:" >> "$tmp";
+	echo -n "tot: " >> "$tmp";
+	for n in `seq $alg $step $last`; do
+	    #echo -n "$n: " >> "$tmp";
+	    grep totalDerouted $PATT-$n.sca | cut -c 43- | tr -d '\n' >> "$tmp";
+	    echo -n ", " >> "$tmp";
+	done
+	echo -n "\n" >> "$tmp";
 	##########################
+	# Total outflanked
+	#echo "$PATT Alg $alg, outflanked:" >> "$tmp";
+	echo -n "ofr: " >> "$tmp";
+	for n in `seq $alg $step $last`; do
+	    #echo -n "$n: " >> "$tmp";
+	    grep totalOutFlanked $PATT-$n.sca | cut -c 45- | tr -d '\n' >> "$tmp";
+	    echo -n ", " >> "$tmp";
+	done
+	echo -n "\n" >> "$tmp";
 	##########################
+	# Total cqr-ed
+	#echo "$PATT Alg $alg, cqr-ed:" >> "$tmp";
+	echo -n "cqr: " >> "$tmp";
+	for n in `seq $alg $step $last`; do
+	    #echo -n "$n: " >> "$tmp";
+	    grep totalCQRed $PATT-$n.sca | cut -c 40- | tr -d '\n' >> "$tmp";
+	    echo -n ", " >> "$tmp";
+	done
+	echo "\n" >> "$tmp";
+	##########################
+	# lifetime
 	echo "$PATT Alg $alg:, lifetime" >> "$tmp";
 	for n in `seq $alg $step $last`; do
 	    #echo -n "$n: " >> "$tmp";

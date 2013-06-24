@@ -96,6 +96,8 @@ private:
   double fsvariance(vector<int> dirsout);
   /// test if given queue would leave a bubble after an insertion
   inline bool bubble(int q);
+  /// test if given queue would leave two bubbles after an insertion
+  inline bool bibubble(int q);
   /// send NAK to a packet
   inline void sendNAK(Pack *mess);
   /// send ACK to a packet
@@ -410,6 +412,16 @@ bool BRouter::bubble(int q){
     return true;
   return false;
 }
+
+bool BRouter::bibubble(int q){
+  // true if q has at least two free slots
+  //OLD: if (coda[q].size() < freeSpace[q]-1)
+  if (freeSpace[q]>2)
+    return true;
+  return false;
+}
+
+
 
 void BRouter::sendACK(Pack *mess){
   mess->setHops(mess->getHops()+1); // increment hop counter
@@ -1016,8 +1028,9 @@ void BRouter::routePack(Pack* p){
       // going to an IDN
       q=12+dirs[0];
   // if full drop the packet, if just injected (i.e., it comes from a
-  // queue different from q) also require a bubble
-  if (full(q) || (!bubble(q) && p->getQueue()!=q) ) {
+  // queue different from q) also require a bubble, if injected from the generator
+  // requires a bibubble (two empty slots after the insertion would have been performed)
+  if (full(q) || (!bubble(q) && p->getQueue()!=q) || (!bibubble(q) && p->getQueue()==-1)) {
     // if at intermediate destination consume and reinject (with probability 1/jollyint)
     // NO REINJECT possible now
     //--->
