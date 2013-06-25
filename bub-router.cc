@@ -1016,7 +1016,8 @@ void BRouter::routePack(Pack* p){
       q=lq;
     }
   }
-  if (q!=-1){
+  // BIBUBBLE for newly generated packets
+  if (q!=-1 && (bibubble(q) || p->getQueue()!=-1)){
     enqueue(p,q);
     return;
   }
