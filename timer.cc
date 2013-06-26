@@ -64,6 +64,8 @@ void Timer::finish() {
   recordScalar("#totalPacks", rcvdPacks);
   recordScalar("#totalDerouted", derouted);
   recordScalar("#totalOutFlanked", ofl);
+  recordScalar("#totalOidn", oidn);
+  recordScalar("#totalWidn", widn);
   recordScalar("#totalCQRed", cqr);
 
   recordScalar("#LB", lb);
@@ -78,6 +80,8 @@ void Timer::handleMessage(cMessage *msg) {
     addRP(m->getCow());
     addDer(m->getDer());
     addOfl(m->getOfl());
+    addOidn(m->getOidn());
+    addWidn(m->getWidn());
     addCqr(m->getCqr());
     int h=m->getHops()-1;
     addHops(h);

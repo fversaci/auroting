@@ -133,7 +133,7 @@ private:
   /// convert from (\pm,\pm,\pm) coordinates to orthant index
   int orth2ind(vector<int> c);
   /// add intermediate destinations
-  inline bool setOFmidpoint(Pack* p, int ort);
+  inline bool setOFmidpoint(Pack* p, int ort, bool oidn);
   /// handle ACK messages
   void handleACK(Ack * ap);
   /// handle NAK messages
@@ -151,7 +151,7 @@ private:
   /// prior wights
   double ofpw,ofpw2,cqrpw;
   /// jolly parameters
-  double jolly, j1, j2;
+  double jolly, j1, j2, zeta;
   int jollyint;
   /// adaptive queues size
   int aqs;
@@ -216,6 +216,7 @@ void BRouter::initialize(){
   tom = new TO("Timeout");
   // choose routing algorithm
   int alg=par("algorithm");
+  zeta=1.0; // default (best value) for CQR
   switch (alg) {
   case 0:
     outflank=false;
@@ -224,6 +225,7 @@ void BRouter::initialize(){
   case 1:
     outflank=true;
     cqr=false;
+    zeta=ofpw;
     break;
   case 2:
     cqr=true;
@@ -232,6 +234,7 @@ void BRouter::initialize(){
   case 3:
     cqr=true;
     outflank=true;
+    zeta=ofpw;
     break;
   default:
     throw cRuntimeError("Unknown routing algorithm: %d", alg);
@@ -502,7 +505,7 @@ int BRouter::OFMid(Pack* p, vector<int> nout, vector<int> nin, vector<int> nhalf
   return coor2addr(mid);
 }
 
-bool BRouter::setOFmidpoint(Pack* p, int mid){
+bool BRouter::setOFmidpoint(Pack* p, int mid, bool oidn){
   if(mid<0)
     throw cRuntimeError("Negative midpoint for OutFlank");
   p->setRoute(0, p->getDst());
@@ -511,6 +514,10 @@ bool BRouter::setOFmidpoint(Pack* p, int mid){
   p->setDst(mid);
   p->setDerouted(true);
   p->setOFlanked(true);
+  if (oidn)
+      p->setOidn(true);
+  else
+      p->setWidn(true);
   setmindirs(p);
   return true;
 }
@@ -571,6 +578,7 @@ void BRouter::setRouting(Pack* p){
 
   // choose best OF midpoint
   int mid=-1;
+  bool oidn=true;
   if(outflank){
       double OFpr1=0.0; double OFpr2=0.0;
       int m1=chooseOFmid1(p, &OFpr1);
@@ -584,14 +592,17 @@ void BRouter::setRouting(Pack* p){
       {
           mid=m2;
           OFpr=OFpr2;
+          oidn=false;
       }
       OFpr*=j1;
   }
 
   // choose best orthant for CQR
   int ort=-1;
-  if(cqr)
+  if(cqr){
     ort=chooseCQRdirs(p, &CQRpr);
+    CQRpr*=j1;
+  }
 
   // if alternate routes worse than minimal, then go minimal
   if (CQRpr<=MINpr && OFpr<=MINpr)
@@ -601,7 +612,7 @@ void BRouter::setRouting(Pack* p){
   if(CQRpr>OFpr)
     setCQRdirs(p,ort);
   else
-    setOFmidpoint(p,mid);
+    setOFmidpoint(p,mid,oidn);
 }
 
 vector<int> BRouter::ISet(Pack* p){
@@ -902,36 +913,44 @@ double BRouter::prior(double fs, double disfac){
   if (fs==0.0)
     return 0.0;
   int maxfs=aqs-maxfreeslots();
-  double fsfac=((double) maxfs)/((double) aqs-fs+1.0);
-  // return fsfac/disfac;
-  return fsfac+1.0/disfac;
+  double fsfac=1;
+  if (maxfs!=0)
+      fsfac=((double) maxfs)/((double) aqs-fs);
+  // double fsfac=((double) maxfs)/((double) aqs-fs+1.0);
+  // return fsfac+1.0/disfac;
+  return fsfac+zeta/disfac;
 }
 
 double BRouter::OFprior(double fs, double disfac){
   if (fs==0.0)
     return 0.0;
   int maxfs=aqs-maxfreeslots();
-  double fsfac=((double) maxfs)/((double) aqs-fs+1.0);
-  // return fsfac/disfac;
-  return fsfac+ofpw/disfac;
+  double fsfac=1;
+  if (maxfs!=0)
+      fsfac=((double) maxfs)/((double) aqs-fs);
+  return fsfac+zeta/disfac;
 }
 
 double BRouter::OFprior2(double fs, double disfac){
   if (fs==0.0)
     return 0.0;
   int maxfs=aqs-maxfreeslots();
-  double fsfac=((double) maxfs)/((double) aqs-fs+1.0);
-  // return fsfac/disfac;
-  return fsfac+ofpw2/disfac;
+  double fsfac=1;
+  if (maxfs!=0)
+      fsfac=((double) maxfs)/((double) aqs-fs);
+  // double fsfac=((double) maxfs)/((double) aqs-fs+1.0);
+  return fsfac+zeta/disfac;
 }
 
 double BRouter::CQRprior(double fs, double disfac){
   if (fs==0.0)
     return 0.0;
   int maxfs=aqs-maxfreeslots();
-  double fsfac=((double) maxfs)/((double) aqs-fs+1.0);
-  // return fsfac/disfac;
-  return fsfac+cqrpw/disfac;
+  double fsfac=1;
+  if (maxfs!=0)
+      fsfac=((double) maxfs)/((double) aqs-fs);
+  // double fsfac=((double) maxfs)/((double) aqs-fs+1.0);
+  return fsfac+zeta/disfac;
 }
 
 int BRouter::distance3(int asource, int amid, int adest){
@@ -994,7 +1013,7 @@ int BRouter::chooseCQRdirs(Pack* p, double* pr){
       pp=lp;
     }
   }
-  *pr=jolly*pp; // save priority
+  *pr=pp; // save priority
   return ort;
 }
 
@@ -1030,7 +1049,7 @@ void BRouter::routePack(Pack* p){
       q=12+dirs[0];
   // if full drop the packet, if just injected (i.e., it comes from a
   // queue different from q) also require a bubble, if injected from the generator
-  // requires a bibubble (two empty slots after the insertion would have been performed)
+  // require a bibubble (half empty slots, after the insertion would have been performed)
   if (full(q) || (!bubble(q) && p->getQueue()!=q) || (!bibubble(q) && p->getQueue()==-1)) {
     // if at intermediate destination consume and reinject (with probability 1/jollyint)
     // NO REINJECT possible now

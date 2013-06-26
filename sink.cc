@@ -33,6 +33,8 @@ void Sink::handleMessage(cMessage *msg) {
     nm->setDer(p->getDerouted()? 1 : 0);
     nm->setCqr(p->getCQRed()? 1 : 0);
     nm->setOfl(p->getOFlanked()? 1 : 0);
+    nm->setOidn(p->getOidn()? 1 : 0);
+    nm->setWidn(p->getWidn()? 1 : 0);
     sendDirect(nm, getParentModule()->getParentModule()->getSubmodule("timer"), "addCow");
   }
   // discard the message

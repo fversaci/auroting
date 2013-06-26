@@ -51,6 +51,8 @@ class Timer: public cSimpleModule {
   void addDer(int n) { derouted+=n; }
   /// Add a number to ofl
   void addOfl(int n) { ofl+=n; }
+  void addOidn(int n) { oidn+=n; }
+  void addWidn(int n) { widn+=n; }
   /// Add a number to cqr
   void addCqr(int n) { cqr+=n; }
   /// packets lifetime
@@ -61,13 +63,15 @@ class Timer: public cSimpleModule {
   int derouted;
   /// number of OutFlanked packets
   int ofl;
+  int oidn;
+  int widn;
   /// number of CQRed packets
   int cqr;
   /// Varia
   double B,lat,L,count,T,x,y,z,max;
  public:
   /// Constructor
-  Timer() : rcvdPacks(0), hops(0), derouted(0), ofl(0), cqr(0) {}
+  Timer() : rcvdPacks(0), hops(0), derouted(0), ofl(0), oidn(0), widn(0), cqr(0) {}
  protected:
   virtual void finish();
   virtual void initialize();
