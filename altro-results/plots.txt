@@ -1,0 +1,192 @@
+Bitreverse Alg 0, derouted:
+tot: 0, 
+ofr: 0, 
+cqr: 0, 
+
+Bitreverse Alg 0:, lifetime
+0.00026213303121841, 
+
+Bitreverse Alg 1, derouted:
+tot: 4060544, 
+ofr: 4060544, 
+cqr: 0, 
+
+Bitreverse Alg 1:, lifetime
+0.00059547245436495, 
+
+Bitreverse Alg 2, derouted:
+tot: 6773054, 
+ofr: 0, 
+cqr: 6773054, 
+
+Bitreverse Alg 2:, lifetime
+0.0003474015096414, 
+
+Bitreverse Alg 3, derouted:
+tot: 4873729, 
+ofr: 1791593, 
+cqr: 3082136, 
+
+Bitreverse Alg 3:, lifetime
+0.00042079005824154, 
+
+Butterfly Alg 0, derouted:
+tot: 0, 
+ofr: 0, 
+cqr: 0, 
+
+Butterfly Alg 0:, lifetime
+5.2856436191166e-05, 
+
+Butterfly Alg 1, derouted:
+tot: 6228390, 
+ofr: 6228390, 
+cqr: 0, 
+
+Butterfly Alg 1:, lifetime
+2.7689401948664e-05, 
+
+Butterfly Alg 2, derouted:
+tot: 7623100, 
+ofr: 0, 
+cqr: 7623100, 
+
+Butterfly Alg 2:, lifetime
+7.0695129371996e-05, 
+
+Butterfly Alg 3, derouted:
+tot: 9378519, 
+ofr: 3633369, 
+cqr: 5745150, 
+
+Butterfly Alg 3:, lifetime
+2.31578846528e-05, 
+
+Uniform Alg 0, derouted:
+tot: 0, 
+ofr: 0, 
+cqr: 0, 
+
+Uniform Alg 0:, lifetime
+7.1547070261892e-05, 
+
+Uniform Alg 1, derouted:
+tot: 5617234, 
+ofr: 5617234, 
+cqr: 0, 
+
+Uniform Alg 1:, lifetime
+5.5273879339131e-05, 
+
+Uniform Alg 2, derouted:
+tot: 3649500, 
+ofr: 0, 
+cqr: 3649500, 
+
+Uniform Alg 2:, lifetime
+3.1190605302041e-05, 
+
+Uniform Alg 3, derouted:
+tot: 4027360, 
+ofr: 1008040, 
+cqr: 3019320, 
+
+Uniform Alg 3:, lifetime
+3.1244425349901e-05, 
+
+Transposition Alg 0, derouted:
+tot: 0, 
+ofr: 0, 
+cqr: 0, 
+
+Transposition Alg 0:, lifetime
+0.00026092362757395, 
+
+Transposition Alg 1, derouted:
+tot: 3497567, 
+ofr: 3497567, 
+cqr: 0, 
+
+Transposition Alg 1:, lifetime
+0.00055280817097818, 
+
+Transposition Alg 2, derouted:
+tot: 3926714, 
+ofr: 0, 
+cqr: 3926714, 
+
+Transposition Alg 2:, lifetime
+0.00027042989019603, 
+
+Transposition Alg 3, derouted:
+tot: 4051694, 
+ofr: 1169148, 
+cqr: 2882546, 
+
+Transposition Alg 3:, lifetime
+0.00039664630756672, 
+
+TDTrans Alg 0, derouted:
+tot: 0, 
+ofr: 0, 
+cqr: 0, 
+
+TDTrans Alg 0:, lifetime
+0.00061570436263797, 
+
+TDTrans Alg 1, derouted:
+tot: 4233606, 
+ofr: 4233606, 
+cqr: 0, 
+
+TDTrans Alg 1:, lifetime
+0.00085804060833424, 
+
+TDTrans Alg 2, derouted:
+tot: 8569800, 
+ofr: 0, 
+cqr: 8569800, 
+
+TDTrans Alg 2:, lifetime
+0.00063930259806498, 
+
+TDTrans Alg 3, derouted:
+tot: 6978910, 
+ofr: 2775996, 
+cqr: 4202914, 
+
+TDTrans Alg 3:, lifetime
+0.00081546494741871, 
+
+Bitcomplement Alg 0, derouted:
+tot: 0, 
+ofr: 0, 
+cqr: 0, 
+
+Bitcomplement Alg 0:, lifetime
+0.0006362481192798, 
+
+Bitcomplement Alg 1, derouted:
+tot: 2287007, 
+ofr: 2287007, 
+cqr: 0, 
+
+Bitcomplement Alg 1:, lifetime
+0.0007557637930907, 
+
+Bitcomplement Alg 2, derouted:
+tot: 11142072, 
+ofr: 0, 
+cqr: 11142072, 
+
+Bitcomplement Alg 2:, lifetime
+0.0018804248575924, 
+
+Bitcomplement Alg 3, derouted:
+tot: 6365422, 
+ofr: 2494655, 
+cqr: 3870767, 
+
+Bitcomplement Alg 3:, lifetime
+0.0009134433994697, 
+

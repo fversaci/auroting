@@ -416,7 +416,7 @@ bool BRouter::bubble(int q){
 bool BRouter::bibubble(int q){
   // true if q has at least two free slots
   //OLD: if (coda[q].size() < freeSpace[q]-1)
-  if (freeSpace[q]>2)
+  if (freeSpace[q]>aqs/2)
     return true;
   return false;
 }
