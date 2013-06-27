@@ -12,9 +12,9 @@ int main(){
   confs.push_back("Butterfly");
   confs.push_back("Uniform");
   confs.push_back("Transposition");
-  confs.push_back("TDTrans");
   confs.push_back("Bitreverse");
-  confs.push_back("Bitcomplement");
+  // confs.push_back("TDTrans");
+  // confs.push_back("Bitcomplement");
   // confs.push_back("Alterow");
   // confs.push_back("Tornado");
   // confs.push_back("Permutation");
